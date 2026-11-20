@@ -1,0 +1,35 @@
+import { useState, type ReactNode } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Activity, ArrowLeftRight, Award, Bell, BookOpen, CalendarDays, ChevronDown, CircleHelp, Crown, GraduationCap, Home, Mail, Menu, MessageSquare, Search, Settings, ShieldCheck, Target, Users, X } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useAuth } from '@/lib/auth-context';
+import { usePlatform, assetUrl } from '@/lib/platform-context';
+import { hasRole } from '@/lib/utils';
+import { useUnreadNotifications } from '@/hooks/use-unread-notifications';
+import '@/pages/system-settings.css';
+interface Props { children: ReactNode; active: 'users' | 'settings' | 'dashboard' | 'mentees' | 'programs' | 'sessions' | 'resources' | 'events' | 'goals' | 'achievements' | 'messages' | 'reports' | 'integrations'; search: string; onSearch: (value: string) => void; searchPlaceholder?: string; brandName?: string; logo?: string | null; onSystemSection?: (section: string) => void }
+export function AdminWorkspace({ children, active, search, onSearch, searchPlaceholder = 'Search users, roles or permissions...', brandName, logo, onSystemSection }: Props) {
+  const { user, logout } = useAuth();
+  const platform = usePlatform();
+  const navigate = useNavigate();
+  const unread = useUnreadNotifications();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const label = hasRole(user, 'super_admin') ? 'Super Admin' : 'Admin';
+  const name = brandName || platform.platform_name;
+  const section = (id: string) => { setMenuOpen(false); if (onSystemSection) onSystemSection(id); else navigate(`/admin/system-settings?section=${id}`); };
+  const nav = [
+    { label: 'Dashboard', icon: Home, to: '/admin', active: active === 'dashboard' }, { label: 'Users & Roles', icon: Users, to: '/admin/users', active: active === 'users' },
+    { label: 'Mentors', icon: Users, to: '/admin/users?role=mentor' }, { label: 'Mentees', icon: Users, to: '/admin/mentees', active: active === 'mentees' },
+    { label: 'Programs', icon: GraduationCap, to: '/admin/programs', active: active === 'programs' }, { label: 'Sessions', icon: CalendarDays, to: '/admin/sessions', active: active === 'sessions' },
+    { label: 'Learning Resources', icon: BookOpen, to: '/admin/resources', active: active === 'resources' }, { label: 'Events', icon: CalendarDays, to: '/admin/events', active: active === 'events' },
+    { label: 'Goals & Progress', icon: Target, to: '/admin/goals', active: active === 'goals' }, { label: 'Achievements', icon: Award, to: '/admin/achievements', active: active === 'achievements' },
+    { label: 'Messages', icon: MessageSquare, to: '/admin/messages', active: active === 'messages' }, { label: 'Reports & Analytics', icon: Activity, to: '/admin/reports', active: active === 'reports' },
+    { label: 'System Settings', icon: Settings, to: '/admin/system-settings', active: active === 'settings' },
+  ];
+  return <div className={`system-shell ${active === 'users' ? 'users-workspace' : active === 'dashboard' ? 'dashboard-workspace' : ''}`}>
+    <header className="system-header"><Link to="/" aria-label="Home"><img src={assetUrl(logo === undefined ? platform.logo_url : logo) || '/assets/learning-logo.svg'} alt={name} /></Link><div className="system-search"><Search size={22} /><input aria-label={active === 'integrations' ? 'Search integrations' : active === 'reports' ? 'Search reports and analytics' : active === 'users' ? 'Search users, roles or permissions' : active === 'messages' ? 'Search admin messages' : active === 'achievements' ? 'Search achievements and badges' : active === 'goals' ? 'Search goals and progress' : active === 'events' ? 'Search events' : active === 'resources' ? 'Search learning resources' : active === 'sessions' ? 'Search sessions' : active === 'programs' ? 'Search programs' : active === 'mentees' ? 'Search mentees' : active === 'dashboard' ? 'Search the admin dashboard' : 'Search system settings'} placeholder={searchPlaceholder} value={search} onChange={event => onSearch(event.target.value)} />{search && <button aria-label="Clear search" onClick={() => onSearch('')}><X size={17} /></button>}</div><div className="system-header-actions"><Link to="/notifications" className="system-bell" aria-label={`Notifications, ${unread} unread`}><Bell size={29} />{unread > 0 && <span>{unread > 99 ? '99+' : unread}</span>}</Link><Link to="/help" aria-label="Help center"><CircleHelp size={29} /></Link><DropdownMenu><DropdownMenuTrigger asChild><button className="system-user"><Avatar><AvatarImage src={assetUrl(user?.avatar)} alt={user?.full_name} /><AvatarFallback>{user?.full_name.split(' ').map(part => part[0]).slice(0, 2).join('')}</AvatarFallback></Avatar><span><strong>{user?.full_name}</strong><small>{label}</small></span><ChevronDown /></button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onClick={() => navigate('/settings')}>My Account Settings</DropdownMenuItem><DropdownMenuItem onClick={() => navigate('/admin/mentor-applications')}>Mentor Applications</DropdownMenuItem><DropdownMenuItem onClick={() => navigate('/admin/inquiries')}>Contact &amp; Partnership Requests</DropdownMenuItem><DropdownMenuItem onClick={() => navigate('/admin/users')}>Users &amp; Roles</DropdownMenuItem><DropdownMenuItem onClick={() => navigate('/admin/system-settings')}>System Settings</DropdownMenuItem><DropdownMenuItem onClick={() => { logout(); navigate('/login'); }}>Sign Out</DropdownMenuItem></DropdownMenuContent></DropdownMenu><button className="system-menu-toggle" aria-label="Toggle navigation" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X /> : <Menu />}</button></div></header>
+    <aside className={`system-sidebar ${menuOpen ? 'open' : ''}`}><div className="system-admin-badge"><span><Crown fill="currentColor" /></span>{label}</div><nav aria-label="Admin navigation">{nav.map(({ label: text, icon: Icon, to, active: selected }) => to ? <Link key={text} to={to} className={selected ? 'active' : undefined} aria-current={selected ? 'page' : undefined} onClick={() => setMenuOpen(false)}><Icon />{text}</Link> : <button key={text} disabled title="This administration module is not available yet"><Icon />{text}</button>)}</nav><h3>Platform</h3><nav><Link to="/admin/integrations" className={active === 'integrations' ? 'active' : undefined} aria-current={active === 'integrations' ? 'page' : undefined} onClick={() => setMenuOpen(false)}><ArrowLeftRight />Integrations</Link><button onClick={() => section('security')}><ShieldCheck />Security &amp; Audit</button><button disabled title="This administration module is not available yet"><Mail />Content Moderation</button></nav><div className="system-admin-promo"><Crown fill="currentColor" /><h3>{name}<span>{label}</span></h3><p>Manage platform, users,<br />content and growth.</p></div></aside>
+    <main className="system-main">{children}</main>
+  </div>;
+}

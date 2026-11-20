@@ -1,0 +1,21 @@
+import { useEffect, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { BookOpen, Download, Star } from 'lucide-react';
+import { getLearnerEventContent, saveEventFeedback } from '@/lib/event-details-api';
+import { eventDownload } from '@/lib/admin-events-api';
+import { saveDownload } from '@/lib/achievements-api';
+import { useAuth } from '@/lib/auth-context';
+import { usePlatform } from '@/lib/platform-context';
+import { operationError } from './admin/dashboard-operations';
+import { eventInput as input, eventOutline as outline, eventPrimary as primary } from './admin/event-editor';
+export function EventParticipantContent({id}:{id:number}){
+ const {user}=useAuth();const platform=usePlatform();const client=useQueryClient();const [rating,setRating]=useState(5);const [comment,setComment]=useState('');const [error,setError]=useState('');const [saved,setSaved]=useState(false);
+ const query=useQuery({queryKey:['event-participant-content',user?.id,id],queryFn:()=>getLearnerEventContent(id)});
+ useEffect(()=>{if(query.data){setRating(query.data.feedback?.rating||5);setComment(query.data.feedback?.comment||'')}},[query.data]);
+ const save=useMutation({mutationFn:()=>saveEventFeedback(id,{rating,comment,...(query.data?.feedback?{lock_version:query.data.feedback.lock_version}:{})}),onSuccess:async()=>{setSaved(true);await client.invalidateQueries({queryKey:['event-participant-content',user?.id,id]})},onError:e=>setError(operationError(e))});
+ const download=useMutation({mutationFn:async({itemId,name}:{itemId:number;name:string})=>saveDownload(await eventDownload(`/events/${id}/materials/${itemId}/file`),name),onError:e=>setError(operationError(e))});
+ const time=(v:string)=>new Intl.DateTimeFormat(platform.language,{timeZone:platform.timezone,dateStyle:'medium',timeStyle:'short'}).format(new Date(v));
+ if(query.isPending)return <p role="status">Loading event content…</p>;if(query.isError)return <p role="alert">{operationError(query.error)} <button className={outline} onClick={()=>query.refetch()}>Retry Content</button></p>;
+ const c=query.data;
+ return <div className="space-y-4 border-t border-violet-100 pt-4">{!!c.agenda.length&&<section><h3 className="mb-2 font-bold">Event Agenda</h3>{c.agenda.map(a=><div key={a.id} className="border-b border-violet-100 py-2 text-sm"><strong>{a.title}</strong><p className="text-xs">{time(a.starts_at)} – {time(a.ends_at)}</p><p>{a.description}</p></div>)}</section>}{!!c.speakers.length&&<section><h3 className="mb-2 font-bold">Speakers</h3>{c.speakers.map(s=><article key={s.id} className="mb-2 rounded-lg bg-violet-50 p-3 text-sm"><strong>{s.name}</strong><p className="text-violet-700">{s.title}</p><p>{s.bio}</p></article>)}</section>}{!!c.materials.length&&<section><h3 className="mb-2 flex items-center gap-2 font-bold"><BookOpen size={19}/>Event Materials</h3><div className="space-y-2">{c.materials.map(m=><article className="rounded-lg border border-violet-100 p-3 text-sm" key={m.id}><strong>{m.title}</strong><p className="my-1">{m.description}</p>{m.file?<button className={outline} disabled={download.isPending} onClick={()=>download.mutate({itemId:m.id,name:m.file!.filename})}><Download size={16}/>{m.file.filename}</button>:<a className={outline} href={m.url!} target="_blank" rel="noopener noreferrer">Open Material</a>}</article>)}</div></section>}{c.can_feedback&&<form className="space-y-3 rounded-xl bg-violet-50 p-3" onSubmit={e=>{e.preventDefault();setError('');setSaved(false);save.mutate()}}><h3 className="flex items-center gap-2 font-bold"><Star size={19}/>Event Feedback</h3><label className="block text-sm">Your Rating<select className={`${input} mt-1`} value={rating} onChange={e=>{setRating(Number(e.target.value));setSaved(false)}}>{[5,4,3,2,1].map(v=><option value={v} key={v}>{v} / 5</option>)}</select></label><textarea className={input} aria-label="Event feedback" rows={3} maxLength={2000} value={comment} onChange={e=>{setComment(e.target.value);setSaved(false)}} placeholder="Share your experience…"/><button className={primary} disabled={save.isPending}>{save.isPending?'Saving…':'Save Feedback'}</button>{saved&&<p role="status" className="text-sm text-green-700">Feedback saved</p>}</form>}{error&&<p role="alert" className="text-sm text-red-700">{error}</p>}</div>
+}

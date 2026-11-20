@@ -1,0 +1,120 @@
+import { PageLoader } from '@/components/loaders/PageLoader';
+import { useDeferredValue, useEffect, useRef, useState } from "react";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
+import { ArrowLeft, Check, CheckCheck, Download, FileText, Info, MessageCircle, PenSquare, Phone, Plus, Search, Send, Smile, Users, Video, X } from "lucide-react";
+import { MenteeWorkspace } from "@/components/layout/mentee-workspace";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { isPlatformAdmin } from '@/lib/utils';
+import { useAuth } from "@/lib/auth-context";
+import { saveDownload } from "@/lib/achievements-api";
+import { createConversation, downloadChatAttachment, getConversation, getConversations, getMessageContacts, getMessages, markConversationRead, sendChatMessage, type ChatAttachment, type ChatConversation, type ChatMessage, type ChatPerson, type MessagePage } from "@/lib/messages-api";
+import { toast } from "sonner";
+import "./messages.css";
+
+function avatarUrl(value?: string | null) { if (!value || /^(https?:|blob:|data:)/.test(value)) return value || undefined; const base = (import.meta.env.VITE_API_BASE_URL || "https://api.nishiohub.com/api/v1").replace(/\/api\/v1\/?$/, ""); return new URL(value.replace(/^\//, ""), `${base}/`).href; }
+function PersonAvatar({ name, src, group = false, online = false }: { name: string; src?: string | null; group?: boolean; online?: boolean }) { return <span className="message-avatar-wrap"><Avatar className="message-avatar">{!group && <AvatarImage src={avatarUrl(src)} alt={name} />}<AvatarFallback>{group ? <Users size={35} fill="currentColor" /> : name.split(" ").map(part => part[0]).slice(0, 2).join("")}</AvatarFallback></Avatar>{online && <span className="message-online-dot"><Check size={10} /></span>}</span>; }
+function roleLabel(role?: string | null) { return role === "mentor" ? "Mentor" : role === "mentee" ? "Mentee" : role ? role.charAt(0).toUpperCase() + role.slice(1).replace(/_/g, " ") : "Member"; }
+function dayKey(value: string | Date) { return new Date(value).toLocaleDateString("en-CA", { timeZone: "Africa/Kampala" }); }
+function dayLabel(value: string) { const today = new Date(); return dayKey(value) === dayKey(today) ? "Today" : dayKey(value) === dayKey(new Date(today.getTime() - 86400000)) ? "Yesterday" : new Date(value).toLocaleDateString(undefined, { timeZone: "Africa/Kampala", month: "short", day: "numeric", year: "numeric" }); }
+function timeLabel(value: string) { return new Date(value).toLocaleTimeString([], { timeZone: "Africa/Kampala", hour: "numeric", minute: "2-digit" }); }
+function inboxTime(value: string) { return dayKey(value) === dayKey(new Date()) ? timeLabel(value) : dayLabel(value).replace(/, \d{4}$/, ""); }
+function apiError(error: unknown) { const detail = (error as { response?: { data?: { detail?: string | string[] } } })?.response?.data?.detail; toast.error(Array.isArray(detail) ? detail.join(", ") : detail || "Could not complete this action. Please try again."); }
+function fileSize(bytes: number) { return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`; }
+interface Draft { text: string; file: File | null; nonce: string }
+
+export default function MessagesPage() {
+  const { user, isLoading: authLoading } = useAuth();
+  const { id } = useParams<{ id?: string }>();
+  const navigate = useNavigate();
+  const client = useQueryClient();
+  const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search);
+  const [filter, setFilter] = useState("all");
+  const [newOpen, setNewOpen] = useState(false);
+  const [groupMode, setGroupMode] = useState(false);
+  const [groupTitle, setGroupTitle] = useState("");
+  const [contactSearch, setContactSearch] = useState("");
+  const deferredContactSearch = useDeferredValue(contactSearch);
+  const [selectedPeople, setSelectedPeople] = useState<ChatPerson[]>([]);
+  const [infoOpen, setInfoOpen] = useState(false);
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const [drafts, setDrafts] = useState<Record<string, Draft>>({});
+  const [downloadId, setDownloadId] = useState<number | null>(null);
+  const [visible, setVisible] = useState(document.visibilityState === "visible");
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
+  const nearBottom = useRef(true);
+  const priorConversation = useRef<string | undefined>();
+  const readCursors = useRef<Record<string, number>>({});
+  const enabled = !!user?.access_token && !isPlatformAdmin(user);
+  const conversationKey = ["conversations", user?.id, deferredSearch];
+  const list = useInfiniteQuery({ queryKey: conversationKey, initialPageParam: 1,
+    queryFn: ({ pageParam }) => getConversations(pageParam, deferredSearch),
+    getNextPageParam: last => last.meta.page < last.meta.total_pages ? last.meta.page + 1 : undefined,
+    enabled, refetchInterval: 5000 });
+  const detail = useQuery({ queryKey: ["conversation", user?.id, id], queryFn: () => getConversation(id!), enabled: enabled && !!id, refetchInterval: 5000 });
+  const messageKey = ["chat-messages", user?.id, id];
+  const messageQuery = useInfiniteQuery({ queryKey: messageKey, initialPageParam: null as number | null,
+    queryFn: ({ pageParam }) => getMessages(id!, pageParam), getNextPageParam: last => last.has_more ? last.oldest_id : undefined,
+    enabled: enabled && !!id, refetchInterval: 5000 });
+  const contacts = useQuery({ queryKey: ["message-contacts", user?.id, deferredContactSearch], queryFn: () => getMessageContacts(deferredContactSearch), enabled: enabled && newOpen });
+  const refreshInbox = async () => { await Promise.all([client.invalidateQueries({ queryKey: ["conversations", user?.id] }), client.invalidateQueries({ queryKey: ["message-unread-count", user?.id] }), client.invalidateQueries({ queryKey: ["notification-unread-count", user?.id] }), client.invalidateQueries({ queryKey: ["notifications-workspace", user?.id] })]); };
+  const create = useMutation({ mutationFn: ({ people, kind, title }: { people: number[]; kind: "direct" | "group"; title?: string }) => createConversation(people, kind, title), onSuccess: async conversation => { setNewOpen(false); setSelectedPeople([]); setGroupTitle(""); setContactSearch(""); await refreshInbox(); navigate(`/messages/${conversation.id}`); }, onError: apiError });
+  const send = useMutation({ mutationFn: sendChatMessage, onSuccess: async (message, payload) => {
+    client.setQueryData<InfiniteData<MessagePage>>(["chat-messages", user?.id, payload.id], current => current ? { ...current, pages: [{ ...current.pages[0], messages: [...current.pages[0].messages.filter(item => item.id !== message.id), message] }, ...current.pages.slice(1)] } : current);
+    setDrafts(current => current[payload.id]?.nonce === payload.nonce ? { ...current, [payload.id]: { text: "", file: null, nonce: "" } } : current);
+    setEmojiOpen(false);
+    await Promise.all([refreshInbox(), client.invalidateQueries({ queryKey: ["chat-messages", user?.id, payload.id] }), client.invalidateQueries({ queryKey: ["conversation", user?.id, payload.id] })]);
+  }, onError: apiError });
+  const read = useMutation({ mutationFn: markConversationRead, onSuccess: refreshInbox, onError: (_error, payload) => { readCursors.current[payload.id] = 0; } });
+  const conversations = list.data?.pages.flatMap(page => page.conversations) || [];
+  const allMessages = [...new Map((messageQuery.data?.pages.flatMap(page => page.messages) || []).map(message => [message.id, message])).values()].sort((a, b) => a.id - b.id);
+  const latestId = allMessages[allMessages.length - 1]?.id;
+  useEffect(() => { const update = () => setVisible(document.visibilityState === "visible"); document.addEventListener("visibilitychange", update); return () => document.removeEventListener("visibilitychange", update); }, []);
+  useEffect(() => { if (!id && conversations.length && window.matchMedia("(min-width: 901px)").matches) navigate(`/messages/${conversations[0].id}`, { replace: true }); }, [id, list.dataUpdatedAt, navigate]);
+  useEffect(() => {
+    if (!id || !latestId || !visible || newOpen || infoOpen || read.isPending || latestId <= (readCursors.current[id] || 0)) return;
+    readCursors.current[id] = latestId;
+    read.mutate({ id, messageId: latestId });
+  }, [id, latestId, messageQuery.dataUpdatedAt, visible, newOpen, infoOpen]);
+  useEffect(() => {
+    if (priorConversation.current !== id || nearBottom.current || allMessages[allMessages.length - 1]?.sender_id === Number(user?.id)) {
+      requestAnimationFrame(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; });
+    }
+    priorConversation.current = id;
+  }, [id, latestId]);
+  if (authLoading) return <PageLoader label="Loading messages…"/>;
+  if (!user) return <Navigate to="/login" replace />;
+  if (isPlatformAdmin(user)) return <Navigate to={id ? `/admin/messages/${id}` : "/admin/messages"} replace />;
+  const conversation = detail.data;
+  const peer = conversation?.members.find(person => person.id !== Number(user.id));
+  const group = conversation?.kind === "group";
+  const visibleConversations = conversations.filter(item => filter === "all" || (filter === "groups" ? item.kind === "group" : item.kind === "direct" && item.members.find(person => person.id !== Number(user.id))?.role === (filter === "mentors" ? "mentor" : "mentee")));
+  const draft = id && drafts[id] ? drafts[id] : { text: "", file: null, nonce: "" };
+  const setDraft = (patch: Partial<Draft>) => { if (!id) return; setDrafts(current => ({ ...current, [id]: { ...(current[id] || { text: "", file: null }), ...patch, nonce: crypto.randomUUID() } })); };
+  const newConversation = () => { setNewOpen(true); setSelectedPeople([]); setGroupMode(false); setGroupTitle(""); setContactSearch(""); };
+  const chooseContact = (person: ChatPerson) => setSelectedPeople(current => current.some(item => item.id === person.id) ? current.filter(item => item.id !== person.id) : groupMode ? [...current, person].slice(0, 29) : [person]);
+  const download = async (message: ChatMessage, attachment: ChatAttachment) => { setDownloadId(message.id); try { saveDownload(await downloadChatAttachment(attachment.download_path), attachment.filename); } catch { toast.error("Could not download this attachment. Please try again."); } finally { setDownloadId(null); } };
+  const submitMessage = () => { if (!id || send.isPending || (!draft.text.trim() && !draft.file)) return; send.mutate({ id, content: draft.text.trim(), attachment: draft.file, nonce: draft.nonce || crypto.randomUUID() }); };
+  const loadEarlier = async () => { const height = scrollRef.current?.scrollHeight || 0, top = scrollRef.current?.scrollTop || 0; await messageQuery.fetchNextPage(); requestAnimationFrame(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight - height + top; }); };
+  function renderMessage(message: ChatMessage, index: number) {
+    const own = message.sender_id === Number(user!.id);
+    const sender = conversation?.members.find(person => person.id === message.sender_id);
+    const date = index === 0 || dayKey(message.created_at) !== dayKey(allMessages[index - 1].created_at);
+    return <div key={message.id} className="chat-message-block">{date && <div className="chat-date-divider"><span>{dayLabel(message.created_at)}</span></div>}<div className={`chat-bubble-row ${own ? "outgoing" : "incoming"}`}>{!own && <PersonAvatar name={message.sender_name} src={sender?.avatar} />}<div className="chat-bubble">{group && !own && <strong className="chat-sender-name">{message.sender_name}</strong>}{message.content && <p>{message.content}</p>}{message.attachment && <button className="chat-attachment" onClick={() => download(message, message.attachment!)} disabled={downloadId === message.id}><span className={message.attachment.content_type === "application/pdf" ? "chat-file-type pdf" : "chat-file-type"}>{message.attachment.content_type === "application/pdf" ? "PDF" : <FileText size={25} />}</span><span><strong>{message.attachment.filename}</strong><small>{message.attachment.content_type === "application/pdf" ? "PDF" : "File"} · {fileSize(message.attachment.byte_size)}</small></span><Download size={21} /></button>}<span className="chat-message-time"><time dateTime={message.created_at}>{timeLabel(message.created_at)}</time>{own && (message.read_by.length ? <CheckCheck size={18} aria-label={`Read by ${message.read_by.length} ${message.read_by.length === 1 ? "person" : "people"}`} /> : <Check size={17} aria-label="Sent" />)}</span></div></div></div>;
+  }
+  return <MenteeWorkspace title="Messages" activePage="messages" name={user.full_name} avatar={user.avatar} search={search} onSearch={setSearch} searchPlaceholder="Search for courses, mentors, mentees, or messages..." sidebarAction={newConversation}>
+    <div className="messages-page-heading"><div><h1>Messages</h1><p>Chat with your mentors, programme coordinators and fellow mentees.</p></div><button className="messages-new-button" onClick={newConversation}><PenSquare size={23} />New Message</button></div>
+    <div className={`messages-columns ${id ? "conversation-open" : ""}`}><section className="messages-inbox"><div className="messages-inbox-search"><Search size={23} /><input aria-label="Search messages" placeholder="Search messages..." value={search} onChange={event => setSearch(event.target.value)} /></div><Tabs value={filter} onValueChange={setFilter}><TabsList className="messages-tabs">{[["all", "All"], ["mentors", "Mentors"], ["mentees", "Mentees"], ["groups", "Groups"]].map(([key, title]) => <TabsTrigger key={key} value={key}>{title}</TabsTrigger>)}</TabsList></Tabs><div className="messages-conversation-list" aria-label="Conversations">{list.isPending ? <PageLoader label="Loading conversations…"/> : list.isError ? <div className="messages-small-empty"><p>Could not load conversations.</p><Button variant="outline" onClick={() => list.refetch()}>Try Again</Button></div> : visibleConversations.length ? visibleConversations.map(item => { const person = item.members.find(member => member.id !== Number(user.id)); return <button key={item.id} className={`messages-conversation ${String(item.id) === id ? "selected" : ""}`} aria-current={String(item.id) === id ? "true" : undefined} onClick={() => { setEmojiOpen(false); navigate(`/messages/${item.id}`); }}><PersonAvatar name={item.title} src={person?.avatar} group={item.kind === "group"} online={item.kind === "direct" && person?.online} /><span className="messages-conversation-copy"><span className="messages-conversation-title"><strong>{item.title}</strong>{item.kind === "direct" && <span className="message-role">{roleLabel(person?.role)}</span>}</span><span className="messages-preview">{item.last_message ? `${item.kind === "group" ? `${item.last_message.sender_name.split(" ")[0]}: ` : ""}${item.last_message.content || item.last_message.attachment?.filename || "Attachment"}` : "Start the conversation"}</span></span><span className="messages-conversation-meta"><time>{inboxTime(item.last_message_at)}</time>{item.unread_count > 0 && <span className="messages-unread-badge">{item.unread_count > 99 ? "99+" : item.unread_count}</span>}</span></button>; }) : <div className="messages-small-empty"><MessageCircle size={32} /><p>{search || filter !== "all" ? "No conversations match this view." : "Start a conversation to connect with your community."}</p><button onClick={newConversation}>New Message</button></div>}{list.hasNextPage && <button className="messages-load-more" disabled={list.isFetchingNextPage} onClick={() => list.fetchNextPage()}>{list.isFetchingNextPage ? "Loading…" : "Load More Conversations"}</button>}</div></section>
+    <section className="messages-chat" aria-label="Selected conversation">{!id ? <div className="messages-empty-chat"><MessageCircle size={49} /><h2>Stay connected</h2><p>Choose a conversation or start a new message.</p><Button onClick={newConversation}>New Message</Button></div> : detail.isPending ? <PageLoader label="Loading conversation…"/> : detail.isError ? <div className="messages-empty-chat"><Info size={38} /><h2>Conversation unavailable</h2><p>This conversation could not be loaded.</p><Button variant="outline" onClick={() => detail.refetch()}>Try Again</Button></div> : conversation && <><header className="chat-header"><button className="messages-back" aria-label="Back to conversations" onClick={() => navigate("/messages")}><ArrowLeft /></button><PersonAvatar name={conversation.title} src={peer?.avatar} group={!!group} /><div className="chat-header-copy"><div><h2>{conversation.title}</h2><span className="message-role">{group ? "Group" : roleLabel(peer?.role)}</span></div><p>{group ? <><Users size={15} />{conversation.members.length} members</> : peer?.online ? <><span className="chat-presence-dot" />Active recently</> : peer?.last_active_at ? `Last active ${new Date(peer.last_active_at).toLocaleString(undefined, { timeZone: "Africa/Kampala", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}` : "Available for messages"}</p></div><div className="chat-header-actions"><button disabled title="Video calls are not available yet" aria-label="Video calls are not available yet"><Video /></button><button disabled title="Audio calls are not available yet" aria-label="Audio calls are not available yet"><Phone /></button><button aria-label="Conversation information" onClick={() => setInfoOpen(true)}><Info /></button></div></header><div className="chat-message-scroll" ref={scrollRef} onScroll={() => { if (scrollRef.current) nearBottom.current = scrollRef.current.scrollHeight - scrollRef.current.scrollTop - scrollRef.current.clientHeight < 120; }} aria-label="Messages" role="log" aria-live="polite">{messageQuery.hasNextPage && <button className="messages-load-more" disabled={messageQuery.isFetchingNextPage} onClick={loadEarlier}>{messageQuery.isFetchingNextPage ? "Loading…" : "Load Earlier Messages"}</button>}{messageQuery.isPending ? <PageLoader label="Loading messages…"/> : messageQuery.isError ? <div className="messages-small-empty"><p>Could not load messages.</p><Button onClick={() => messageQuery.refetch()}>Try Again</Button></div> : allMessages.length ? allMessages.map(renderMessage) : <div className="messages-empty-thread"><MessageCircle size={34} /><p>Say hello to start the conversation.</p></div>}</div><form className="chat-composer" onSubmit={event => { event.preventDefault(); submitMessage(); }}>{draft.file && <div className="chat-pending-file"><FileText size={17} /><span>{draft.file.name} · {fileSize(draft.file.size)}</span><button type="button" aria-label="Remove attachment" onClick={() => setDraft({ file: null })}><X size={17} /></button></div>}<input ref={fileRef} type="file" accept=".pdf,.txt,.png,.jpg,.jpeg,.webp" className="sr-only" aria-label="Message attachment" onChange={event => { const file = event.target.files?.[0]; if (file) { if (file.size > 10 * 1024 * 1024) toast.error("Choose a file smaller than 10 MB"); else setDraft({ file }); } event.target.value = ""; }} /><button type="button" className="chat-attach-button" aria-label="Attach a PDF, image, or text file" onClick={() => fileRef.current?.click()}><Plus size={29} /></button><div className="chat-compose-input"><textarea ref={composerRef} aria-label="Type a message" placeholder="Type a message..." maxLength={5000} rows={1} value={draft.text} onChange={event => setDraft({ text: event.target.value })} onKeyDown={event => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); submitMessage(); } }} /><button type="button" aria-label="Choose an emoji" aria-expanded={emojiOpen} onClick={() => setEmojiOpen(!emojiOpen)}><Smile size={25} /></button>{emojiOpen && <div className="chat-emoji-picker" aria-label="Choose an emoji">{["👋", "😊", "🎉", "👍", "🙏", "💡", "🚀", "❤️"].map(emoji => <button key={emoji} type="button" aria-label={`Add ${emoji}`} onClick={() => { setDraft({ text: draft.text + emoji }); setEmojiOpen(false); composerRef.current?.focus(); }}>{emoji}</button>)}</div>}</div><button className="chat-send-button" type="submit" aria-label="Send message" disabled={send.isPending || (!draft.text.trim() && !draft.file)}><Send size={26} /></button></form></>}</section></div>
+    <Dialog open={newOpen} onOpenChange={setNewOpen}><DialogContent className="messages-dialog"><DialogHeader><DialogTitle>New Message</DialogTitle><DialogDescription>Start a direct conversation or create a group. Search by name to find a person.</DialogDescription></DialogHeader><form className="messages-new-form" onSubmit={event => { event.preventDefault(); create.mutate({ people: selectedPeople.map(person => person.id), kind: groupMode ? "group" : "direct", title: groupMode ? groupTitle.trim() : undefined }); }}><div className="messages-mode-buttons"><button type="button" aria-pressed={!groupMode} onClick={() => { setGroupMode(false); setSelectedPeople(current => current.slice(0, 1)); }}>Direct Message</button><button type="button" aria-pressed={groupMode} onClick={() => setGroupMode(true)}>Group Conversation</button></div>{groupMode && <div><Label htmlFor="chat-group-title">Group name</Label><Input id="chat-group-title" maxLength={150} value={groupTitle} onChange={event => setGroupTitle(event.target.value)} required /></div>}<Input aria-label="Search people by name" placeholder="Search mentors or mentees by name..." value={contactSearch} onChange={event => setContactSearch(event.target.value)} /><div className="messages-selected-people">{selectedPeople.map(person => <button type="button" key={person.id} onClick={() => chooseContact(person)}>{person.name}<X size={13} /></button>)}</div><div className="messages-contact-list">{contacts.isPending ? <PageLoader label="Loading contacts…"/> : contacts.isError ? <Button type="button" variant="outline" onClick={() => contacts.refetch()}>Retry Contacts</Button> : contacts.data?.length ? contacts.data.map(person => <button type="button" key={person.id} aria-pressed={selectedPeople.some(item => item.id === person.id)} onClick={() => chooseContact(person)}><PersonAvatar name={person.name} src={person.avatar} /><span><strong>{person.name}</strong><small>{roleLabel(person.role)}</small></span>{selectedPeople.some(item => item.id === person.id) && <Check size={19} />}</button>) : <p>No matching contacts. Try a name in the search field.</p>}</div><Button type="submit" disabled={create.isPending || (groupMode ? selectedPeople.length < 2 || !groupTitle.trim() : selectedPeople.length !== 1)}>{create.isPending ? "Opening…" : groupMode ? "Create Group" : "Start Conversation"}</Button></form></DialogContent></Dialog>
+    <Dialog open={infoOpen} onOpenChange={setInfoOpen}><DialogContent><DialogHeader><DialogTitle>{conversation?.title || "Conversation"}</DialogTitle><DialogDescription>{group ? "People in this group conversation." : "Conversation details and participants."}</DialogDescription></DialogHeader><div className="messages-member-list">{conversation?.members.map(person => <div key={person.id}><PersonAvatar name={person.name} src={person.avatar} /><span><strong>{person.name}{person.id === Number(user.id) ? " (You)" : ""}</strong><small>{roleLabel(person.role)}</small></span></div>)}</div><p className="messages-call-note">Audio and video calls are not available in this workspace yet.</p></DialogContent></Dialog>
+  </MenteeWorkspace>;
+}

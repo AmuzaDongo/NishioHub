@@ -1,0 +1,11 @@
+import { AlertCircle, CheckCircle2, Clock, Trophy } from 'lucide-react';
+import type { GoalStatus } from '@/lib/admin-goals-api';
+export const goalPanel='rounded-2xl border border-violet-100 bg-white/80 shadow-sm shadow-violet-200/60';
+export const goalOutline='inline-flex items-center justify-center gap-2 rounded-lg border border-violet-200 bg-white/70 px-3 py-2 text-xs font-bold text-violet-700 hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-40';
+export const goalPrimary=`${goalOutline} border-transparent bg-gradient-to-b from-violet-600 to-violet-800 !text-white`;
+export const goalInput='w-full min-w-0 rounded-lg border border-violet-200 bg-white/70 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 disabled:bg-slate-100';
+export const goalIcon='inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-violet-200 bg-white text-violet-700 hover:bg-violet-50 disabled:opacity-40';
+export const goalLabel=(value:string)=>value.replace(/_/g,' ').replace(/\b\w/g,s=>s.toUpperCase());
+export const goalStatusInfo={completed:{label:'Completed',Icon:Trophy,color:'#00ad13',tone:'bg-green-100 text-green-800'},on_track:{label:'On Track',Icon:CheckCircle2,color:'#0084ff',tone:'bg-blue-100 text-blue-700'},in_progress:{label:'In Progress',Icon:Clock,color:'#ffba00',tone:'bg-amber-100 text-amber-800'},at_risk:{label:'At Risk',Icon:AlertCircle,color:'#ff304e',tone:'bg-red-100 text-red-700'}};
+export function GoalStatusBadge({value}:{value:GoalStatus}){const {label,Icon,tone}=goalStatusInfo[value];return <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold ${tone}`}><Icon size={14}/>{label}</span>}
+export function GoalProgressBar({value}:{value:number}){return <div className="min-w-[105px]"><strong className="text-xs">{value}%</strong><span className="mt-1 block h-2 overflow-hidden rounded-full bg-violet-100" role="progressbar" aria-label="Goal progress" aria-valuenow={value} aria-valuemin={0} aria-valuemax={100}><span className={`block h-full rounded-full ${value===100?'bg-green-600':'bg-gradient-to-r from-violet-500 to-violet-700'}`} style={{width:`${value}%`}}/></span></div>}

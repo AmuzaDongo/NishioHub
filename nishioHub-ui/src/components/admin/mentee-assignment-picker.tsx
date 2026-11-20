@@ -1,0 +1,13 @@
+import { useDeferredValue, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Check, ChevronDown } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useAuth } from '@/lib/auth-context';
+import { getMenteeOptions } from '@/lib/admin-mentees-api';
+const input = 'w-full min-w-0 rounded-lg border border-violet-200 bg-white/75 px-3 py-2 text-sm outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-100';
+const outline = 'rounded-lg border border-violet-200 px-3 py-2 text-sm text-violet-700';
+export function MenteeAssignmentPicker({ type, value, name, onChange, activeOnly = false, label }: { type: 'mentors' | 'programs'; value: number | null; name?: string; onChange: (id: number | null, name?: string) => void; activeOnly?: boolean; label: string }) {
+  const { user } = useAuth(); const [open, setOpen] = useState(false); const [q, setQ] = useState(''); const deferred = useDeferredValue(q);
+  const query = useQuery({ queryKey: ['mentee-options', user?.id, deferred, activeOnly], queryFn: () => getMenteeOptions(deferred, activeOnly), enabled: open });
+  return <Popover open={open} onOpenChange={setOpen}><PopoverTrigger asChild><button type="button" aria-label={label} className={`${input} flex items-center justify-between gap-2 text-left font-medium`}><span className="truncate">{value ? name || `${type === 'mentors' ? 'Mentor' : 'Program'} #${value}` : label}</span><ChevronDown size={17} className="shrink-0" /></button></PopoverTrigger><PopoverContent className="w-[300px] max-w-[85vw] p-2" align="start"><input className={input} autoFocus aria-label={`Search ${type}`} placeholder={`Search ${type}…`} value={q} onChange={e => setQ(e.target.value)} /><div className="mt-2 max-h-60 overflow-y-auto"><button type="button" className="w-full rounded p-2 text-left text-sm hover:bg-violet-50" onClick={() => { onChange(null); setOpen(false); }}>{activeOnly ? 'Unassigned' : `All ${type}`}</button>{query.isPending ? <p className="p-2 text-sm" role="status">Loading…</p> : query.isError ? <button type="button" className={outline} onClick={() => query.refetch()}>Retry</button> : query.data?.[type].map(item => <button type="button" key={item.id} className="flex w-full items-center justify-between rounded p-2 text-left text-sm hover:bg-violet-50" onClick={() => { onChange(item.id, item.name); setOpen(false); }}>{item.name}{value === item.id && <Check size={15} />}</button>)}</div><p className="p-2 text-[10px] text-slate-500">Search to find more results. Up to 100 matches shown.</p></PopoverContent></Popover>;
+}

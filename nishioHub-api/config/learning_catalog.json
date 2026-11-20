@@ -1,0 +1,387 @@
+{
+  "categories": [
+    {
+      "id": "technology",
+      "name": "Technology & Coding",
+      "icon": "laptop",
+      "color": "cyan"
+    },
+    {
+      "id": "stem",
+      "name": "STEM (Science & Innovation)",
+      "icon": "flask",
+      "color": "purple"
+    },
+    {
+      "id": "career",
+      "name": "Career Development",
+      "icon": "chart",
+      "color": "amber"
+    },
+    {
+      "id": "entrepreneurship",
+      "name": "Entrepreneurship",
+      "icon": "handshake",
+      "color": "gold"
+    },
+    {
+      "id": "agriculture",
+      "name": "Agriculture & Environment",
+      "icon": "sprout",
+      "color": "green"
+    },
+    {
+      "id": "creativity",
+      "name": "Creativity & Media",
+      "icon": "palette",
+      "color": "purple"
+    },
+    {
+      "id": "life-skills",
+      "name": "Life Skills & Leadership",
+      "icon": "users",
+      "color": "blue"
+    }
+  ],
+  "courses": [
+    {
+      "id": "programming",
+      "title": "Introduction to Programming",
+      "category_id": "technology",
+      "level": "Beginner",
+      "featured": true,
+      "image": "/images/Code.jpg",
+      "lessons": [
+        {
+          "id": "programming-1",
+          "title": "Computer Basics",
+          "content": "A computer follows instructions to process information. Input devices, such as a keyboard, send information in. The processor works with it, memory holds it while you work, and output devices show the result. Files keep your work after an app closes.",
+          "practice": "Create a folder called My Learning. Write down one input device, one output device, and a task you want a computer to help you with.",
+          "minutes": 30
+        },
+        {
+          "id": "programming-2",
+          "title": "Introduction to Programming",
+          "content": "A program is a sequence of precise instructions. A variable gives a name to a value. A condition chooses what to do, and a loop repeats a step. For example, a greeting program stores a name and combines it with the word Hello. Start by writing the steps in plain language before choosing a programming language.",
+          "practice": "Write instructions for greeting a visitor. Include a question asking their name, a variable to remember it, and an output that uses it.",
+          "minutes": 30
+        },
+        {
+          "id": "programming-3",
+          "title": "Web Development Basics",
+          "content": "HTML describes the structure of a page. A heading uses an h1 element, a paragraph uses p, and a link uses a with an href address. CSS changes appearance and JavaScript adds interaction. A useful first page needs a clear title, readable text, and meaningful links.",
+          "practice": "In a text editor create a file called index.html. Add <h1>My first page</h1> followed by <p>I am learning to build for the web.</p>. Open it in a browser.",
+          "minutes": 30
+        },
+        {
+          "id": "programming-4",
+          "title": "Build a Small Project",
+          "content": "A small project starts with a user and a problem. Choose one useful feature, sketch the screen, and build the smallest version you can test. Check whether someone else can understand the page without your explanation. Improve one thing based on their feedback.",
+          "practice": "Make a personal learning page with a heading, three learning goals, and one useful link. Ask someone to try it and write down one improvement.",
+          "minutes": 30
+        }
+      ]
+    },
+    {
+      "id": "robotics",
+      "title": "Robotics for Beginners",
+      "category_id": "stem",
+      "level": "Beginner",
+      "featured": true,
+      "image": "/images/learning-robotics.png",
+      "lessons": [
+        {
+          "id": "robotics-1",
+          "title": "What Is a Robot?",
+          "content": "A robot combines a physical structure, a controller, and parts that sense or act. Some robots follow fixed instructions; others change their actions when a sensor detects a change. The job determines the design.",
+          "practice": "Sketch a robot that could help at school. Label its controller, one sensor, and the action it performs.",
+          "minutes": 30
+        },
+        {
+          "id": "robotics-2",
+          "title": "Inputs and Sensors",
+          "content": "Sensors turn information about the world into a signal a controller can use. A light sensor measures brightness; a distance sensor estimates how close an object is. A measurement can be noisy, so test it more than once.",
+          "practice": "List three things your robot needs to detect. For each, describe the signal that would trigger an action.",
+          "minutes": 30
+        },
+        {
+          "id": "robotics-3",
+          "title": "Outputs and Movement",
+          "content": "Motors create movement, lights show status, and buzzers make sound. A controller sends instructions to these outputs. Safe designs limit movement and have a clear way to stop.",
+          "practice": "Draw a simple route for your robot. Mark where it should turn, slow down, and stop.",
+          "minutes": 30
+        },
+        {
+          "id": "robotics-4",
+          "title": "Control with Conditions",
+          "content": "A control rule connects an input to an action. IF the path is blocked, THEN stop; ELSE move forward. Testing both branches helps you find unexpected behavior.",
+          "practice": "Write three IF/ELSE rules for your school robot, including a rule for an unexpected sensor reading.",
+          "minutes": 30
+        },
+        {
+          "id": "robotics-5",
+          "title": "Plan a Prototype",
+          "content": "A prototype tests an idea before a full build. Cardboard, paper, and a written sequence can show how a robot would work. Record what you expect before trying it.",
+          "practice": "Build a paper model and act out one task. Record where the design is unclear.",
+          "minutes": 30
+        },
+        {
+          "id": "robotics-6",
+          "title": "Test and Improve",
+          "content": "Change one thing at a time when testing. Compare the result with your prediction and keep notes. A design that works once may fail in a different setting.",
+          "practice": "Test your model in three situations. Describe the result, one limitation, and the next change you would make.",
+          "minutes": 30
+        }
+      ]
+    },
+    {
+      "id": "smart-agriculture",
+      "title": "Smart Agriculture Basics",
+      "category_id": "agriculture",
+      "level": "Beginner",
+      "featured": true,
+      "image": "/images/learning-agriculture.png",
+      "lessons": [
+        {
+          "id": "smart-agriculture-1",
+          "title": "What Plants Need",
+          "content": "Plants need light, water, air, nutrients, and suitable conditions to grow. Too much water can harm roots as well as too little. Observations help you decide what a plant needs.",
+          "practice": "Observe a plant in a safe place. Note its light, soil moisture, and leaf condition without disturbing it.",
+          "minutes": 30
+        },
+        {
+          "id": "smart-agriculture-2",
+          "title": "Healthy Soil",
+          "content": "Soil contains mineral particles, organic matter, water, air, and living organisms. Organic matter can help soil hold water. Different soils drain at different speeds.",
+          "practice": "Compare two small soil samples with an adult. Describe texture and drainage, then wash your hands.",
+          "minutes": 30
+        },
+        {
+          "id": "smart-agriculture-3",
+          "title": "Water Wisely",
+          "content": "Water should reach roots with as little waste as possible. Mulch can reduce evaporation. A simple schedule based on soil observations is more useful than watering without checking.",
+          "practice": "Design a watering log with columns for date, soil moisture, weather, and the action taken.",
+          "minutes": 30
+        },
+        {
+          "id": "smart-agriculture-4",
+          "title": "Using Data on a Farm",
+          "content": "Measurements can reveal patterns. A moisture sensor can support a watering decision, but a person should check that the reading makes sense. Good records use consistent units and times.",
+          "practice": "Create a table with three days of example moisture readings and write a clear rule for when to check a plant.",
+          "minutes": 30
+        },
+        {
+          "id": "smart-agriculture-5",
+          "title": "Plan a Growing Project",
+          "content": "Choose a suitable plant, a container or plot, and a way to observe progress. Keep comparisons fair by changing only one factor. Ask an adult before using tools or unfamiliar materials.",
+          "practice": "Write a one-week observation plan with a question, what you will measure, and how you will record it.",
+          "minutes": 30
+        }
+      ]
+    },
+    {
+      "id": "innovation",
+      "title": "Innovation & Problem Solving",
+      "category_id": "entrepreneurship",
+      "level": "Intermediate",
+      "featured": true,
+      "image": "/images/learning-innovation.png",
+      "lessons": [
+        {
+          "id": "innovation-1",
+          "title": "Notice a Problem",
+          "content": "Useful ideas begin with understanding a real need. Watch what people do and ask open questions rather than assuming the answer. Separate what you observed from what you guessed.",
+          "practice": "Choose an everyday challenge. Write three observations and two questions to ask someone affected.",
+          "minutes": 30
+        },
+        {
+          "id": "innovation-2",
+          "title": "Define the Need",
+          "content": "A clear problem statement describes who needs help, what they are trying to do, and what gets in the way. Keep the statement focused on the need before choosing a solution.",
+          "practice": "Write: A learner needs a way to ___ because ___. Check whether your statement already assumes a particular product.",
+          "minutes": 30
+        },
+        {
+          "id": "innovation-3",
+          "title": "Generate Ideas",
+          "content": "Create several options before picking one. A useful idea may combine existing approaches in a new way. Compare options using usefulness, cost, and how easily you can test them.",
+          "practice": "Sketch five different solutions, then choose one using your three comparison criteria.",
+          "minutes": 30
+        },
+        {
+          "id": "innovation-4",
+          "title": "Make a Prototype",
+          "content": "A prototype is a quick way to learn. A paper sketch or role-play can test the main idea without building everything. Explain the task to a tester without telling them how to use your design.",
+          "practice": "Create a paper prototype. Ask someone to perform one task and note where they hesitate.",
+          "minutes": 30
+        },
+        {
+          "id": "innovation-5",
+          "title": "Learn from Feedback",
+          "content": "Feedback is evidence to consider, not a score of your ability. Look for repeated difficulties. Prioritize changes that address the biggest barrier to the user goal.",
+          "practice": "Summarize two observations from your test and choose one specific improvement.",
+          "minutes": 30
+        },
+        {
+          "id": "innovation-6",
+          "title": "Share Your Idea",
+          "content": "A short explanation connects the problem, the people affected, the proposed solution, and what you learned. Be clear about what is tested and what remains uncertain.",
+          "practice": "Prepare a one-minute explanation with your problem statement, a sketch, test feedback, and a next step.",
+          "minutes": 30
+        }
+      ]
+    },
+    {
+      "id": "python",
+      "title": "Python for Beginners",
+      "category_id": "technology",
+      "level": "Beginner",
+      "featured": false,
+      "image": "/images/Code.jpg",
+      "lessons": [
+        {
+          "id": "python-1",
+          "title": "Values and Variables",
+          "content": "Python stores values using names. For example, name = \"Joyce\" stores text and score = 3 stores a number. print(name) displays the value. Use clear names that describe what a value represents.",
+          "practice": "Write three variable assignments for a simple learning tracker, then predict the output of printing each one.",
+          "minutes": 30
+        },
+        {
+          "id": "python-2",
+          "title": "Make Decisions",
+          "content": "An if statement runs code when a condition is true. In Python indentation groups the instructions. A comparison such as score >= 3 produces True or False. An else branch handles the alternative.",
+          "practice": "Write a decision in plain language that congratulates a learner after completing three tasks.",
+          "minutes": 30
+        },
+        {
+          "id": "python-3",
+          "title": "Repeat with Loops",
+          "content": "A for loop repeats instructions for each item in a collection. For example, for topic in [\"reading\", \"coding\"]: can process two topics. The indented body explains what happens to each item.",
+          "practice": "Write a list of three topics and a loop that would print each topic. Explain which line repeats.",
+          "minutes": 30
+        },
+        {
+          "id": "python-4",
+          "title": "Build a Tracker",
+          "content": "Combine a list of tasks, a count, and a condition to build a small tracker. Test the empty list as well as a list with several entries. Check that the displayed result matches the data.",
+          "practice": "Design a program that counts completed tasks. Describe its input, output, and two test cases.",
+          "minutes": 30
+        }
+      ]
+    },
+    {
+      "id": "digital-skills",
+      "title": "Digital Skills for Students",
+      "category_id": "career",
+      "level": "Beginner",
+      "featured": false,
+      "image": "/images/Code.jpg",
+      "lessons": [
+        {
+          "id": "digital-skills-1",
+          "title": "Organize Your Work",
+          "content": "Clear file names and folders make work easier to find. Include a topic and date where useful. Save a separate backup for important work, and check that you can open it.",
+          "practice": "Design a folder structure for three school subjects and explain your naming rule.",
+          "minutes": 30
+        },
+        {
+          "id": "digital-skills-2",
+          "title": "Search Thoughtfully",
+          "content": "Choose specific search words. Check who created a page, when it was published, and whether another reliable source supports it. A high position in results does not guarantee accuracy.",
+          "practice": "Write two search phrases for a school question and list three checks you would make before trusting a page.",
+          "minutes": 30
+        },
+        {
+          "id": "digital-skills-3",
+          "title": "Stay Safe Online",
+          "content": "Keep passwords private and use different passwords for important accounts. Ask a trusted adult for help with unexpected requests for personal information or uncomfortable messages. Think before sharing photos or locations.",
+          "practice": "Create a fictional example of a suspicious message and explain the clues. Do not use any real passwords or personal details.",
+          "minutes": 30
+        },
+        {
+          "id": "digital-skills-4",
+          "title": "Present an Idea",
+          "content": "A useful presentation has one clear message, readable text, and relevant evidence. Images should support the point. Credit the source of information or media you use.",
+          "practice": "Plan three slides: the question, your evidence, and what you learned. Add source notes.",
+          "minutes": 30
+        }
+      ]
+    },
+    {
+      "id": "climate",
+      "title": "Climate & Agriculture",
+      "category_id": "agriculture",
+      "level": "Beginner",
+      "featured": false,
+      "image": "/images/learning-agriculture.png",
+      "lessons": [
+        {
+          "id": "climate-1",
+          "title": "Weather and Climate",
+          "content": "Weather describes conditions over a short period; climate describes patterns over many years. A single hot day does not establish a climate trend. Agriculture depends on both day-to-day conditions and longer patterns.",
+          "practice": "Record the weather today and list the information you would need to describe a place\u2019s climate.",
+          "minutes": 30
+        },
+        {
+          "id": "climate-2",
+          "title": "Protect Water and Soil",
+          "content": "Vegetation can help reduce erosion by protecting soil from rain and wind. Conserving soil and water supports plant growth. Local conditions matter when choosing a method.",
+          "practice": "Sketch two ways a school garden could reduce soil erosion and explain how each helps.",
+          "minutes": 30
+        },
+        {
+          "id": "climate-3",
+          "title": "Adapt a Growing Plan",
+          "content": "A growing plan should consider rainfall, heat, soil, and available water. Compare options with a knowledgeable adult or local grower before making changes. Keep records of what works.",
+          "practice": "List three questions you would ask a local grower about changing weather patterns.",
+          "minutes": 30
+        },
+        {
+          "id": "climate-4",
+          "title": "Share an Observation",
+          "content": "Good observations include dates, methods, and limitations. A small project can raise questions without proving a large trend. Explain the difference between your measurements and your interpretation.",
+          "practice": "Prepare a short garden observation report with one finding, one uncertainty, and one next question.",
+          "minutes": 30
+        }
+      ]
+    },
+    {
+      "id": "leadership",
+      "title": "Leadership Basics",
+      "category_id": "life-skills",
+      "level": "Beginner",
+      "featured": false,
+      "image": "/images/learning-innovation.png",
+      "lessons": [
+        {
+          "id": "leadership-1",
+          "title": "Listen First",
+          "content": "Leadership starts with understanding others. Ask questions, allow time to answer, and summarize what you heard. Listening does not require agreeing with every idea.",
+          "practice": "Practice asking someone about a learning goal. Summarize their answer and ask whether you understood correctly.",
+          "minutes": 30
+        },
+        {
+          "id": "leadership-2",
+          "title": "Work as a Team",
+          "content": "A team needs a shared goal, clear roles, and a way to make decisions. Different people bring different strengths. Agree on what to do when someone needs help.",
+          "practice": "Plan a small group activity with a goal, three roles, and a check-in time.",
+          "minutes": 30
+        },
+        {
+          "id": "leadership-3",
+          "title": "Give Useful Feedback",
+          "content": "Useful feedback names a specific observation, explains its effect, and suggests a next step. Speak respectfully and invite the other person\u2019s view. Focus on behavior that can change.",
+          "practice": "Rewrite \u201cThat was bad\u201d as a specific observation and a constructive suggestion.",
+          "minutes": 30
+        },
+        {
+          "id": "leadership-4",
+          "title": "Lead a Small Project",
+          "content": "Break a goal into small steps with an owner and a deadline. Check progress and adapt when something changes. Reflect on both the outcome and how the team worked together.",
+          "practice": "Make a four-step plan for a school activity, including responsibilities and a reflection question.",
+          "minutes": 30
+        }
+      ]
+    }
+  ]
+}

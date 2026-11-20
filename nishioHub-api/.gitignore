@@ -1,0 +1,14 @@
+/vendor/bundle
+/log/*
+/tmp/*
+!/log/.keep
+!/tmp/.keep
+/public/media/profiles/*
+!/public/media/profiles/.keep
+/public/uploads/*
+!/public/uploads/.keep
+.env
+.env.*
+!.env.example
+
+.bundle

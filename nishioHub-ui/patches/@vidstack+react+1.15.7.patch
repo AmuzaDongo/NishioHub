@@ -1,0 +1,108 @@
+diff --git a/node_modules/@vidstack/react/dev/chunks/vidstack-Et9Hv5GD.js b/node_modules/@vidstack/react/dev/chunks/vidstack-Et9Hv5GD.js
+index 8cd18f3..31fa7f6 100644
+--- a/node_modules/@vidstack/react/dev/chunks/vidstack-Et9Hv5GD.js
++++ b/node_modules/@vidstack/react/dev/chunks/vidstack-Et9Hv5GD.js
+@@ -84,7 +84,12 @@ var YouTubeProvider = class extends EmbedProvider {
+ 	destroy() {
+ 		this.#reset();
+ 		const message = "provider destroyed";
+-		for (const promises of this.#promises.values()) for (const { reject } of promises) reject(message);
++		// Observe cancellation on fire-and-forget provider commands before rejecting them.
++        // Callers awaiting the original promise still receive the cancellation.
++        for (const promises of this.#promises.values()) for (const { reject, promise } of promises) {
++          promise.catch(() => {});
++          reject(message);
++        }
+ 		this.#promises.clear();
+ 	}
+ 	async play() {
+diff --git a/node_modules/@vidstack/react/dev/chunks/vidstack-c2p6AgBe.js b/node_modules/@vidstack/react/dev/chunks/vidstack-c2p6AgBe.js
+index 2aebf77..b56b422 100644
+--- a/node_modules/@vidstack/react/dev/chunks/vidstack-c2p6AgBe.js
++++ b/node_modules/@vidstack/react/dev/chunks/vidstack-c2p6AgBe.js
+@@ -119,7 +119,12 @@ var VimeoProvider = class extends EmbedProvider {
+ 		this.#reset();
+ 		this.fullscreen = void 0;
+ 		const message = "provider destroyed";
+-		for (const promises of this.#promises.values()) for (const { reject } of promises) reject(message);
++		// Observe cancellation on fire-and-forget provider commands before rejecting them.
++        // Callers awaiting the original promise still receive the cancellation.
++        for (const promises of this.#promises.values()) for (const { reject, promise } of promises) {
++          promise.catch(() => {});
++          reject(message);
++        }
+ 		this.#promises.clear();
+ 		this.#remote("destroy");
+ 	}
+diff --git a/node_modules/@vidstack/react/prod/chunks/vidstack-BGb4C21H.js b/node_modules/@vidstack/react/prod/chunks/vidstack-BGb4C21H.js
+index c8d2831..03011e2 100644
+--- a/node_modules/@vidstack/react/prod/chunks/vidstack-BGb4C21H.js
++++ b/node_modules/@vidstack/react/prod/chunks/vidstack-BGb4C21H.js
+@@ -84,7 +84,12 @@ var YouTubeProvider = class extends EmbedProvider {
+ 	destroy() {
+ 		this.#reset();
+ 		const message = "provider destroyed";
+-		for (const promises of this.#promises.values()) for (const { reject } of promises) reject(message);
++		// Observe cancellation on fire-and-forget provider commands before rejecting them.
++        // Callers awaiting the original promise still receive the cancellation.
++        for (const promises of this.#promises.values()) for (const { reject, promise } of promises) {
++          promise.catch(() => {});
++          reject(message);
++        }
+ 		this.#promises.clear();
+ 	}
+ 	async play() {
+diff --git a/node_modules/@vidstack/react/prod/chunks/vidstack-BWGAMTdq.js b/node_modules/@vidstack/react/prod/chunks/vidstack-BWGAMTdq.js
+index 82ec3b3..ba367a6 100644
+--- a/node_modules/@vidstack/react/prod/chunks/vidstack-BWGAMTdq.js
++++ b/node_modules/@vidstack/react/prod/chunks/vidstack-BWGAMTdq.js
+@@ -119,7 +119,12 @@ var VimeoProvider = class extends EmbedProvider {
+ 		this.#reset();
+ 		this.fullscreen = void 0;
+ 		const message = "provider destroyed";
+-		for (const promises of this.#promises.values()) for (const { reject } of promises) reject(message);
++		// Observe cancellation on fire-and-forget provider commands before rejecting them.
++        // Callers awaiting the original promise still receive the cancellation.
++        for (const promises of this.#promises.values()) for (const { reject, promise } of promises) {
++          promise.catch(() => {});
++          reject(message);
++        }
+ 		this.#promises.clear();
+ 		this.#remote("destroy");
+ 	}
+diff --git a/node_modules/@vidstack/react/server/chunks/vidstack-BH38gSJn.js b/node_modules/@vidstack/react/server/chunks/vidstack-BH38gSJn.js
+index b176591..b1d1300 100644
+--- a/node_modules/@vidstack/react/server/chunks/vidstack-BH38gSJn.js
++++ b/node_modules/@vidstack/react/server/chunks/vidstack-BH38gSJn.js
+@@ -84,7 +84,12 @@ var YouTubeProvider = class extends EmbedProvider {
+ 	destroy() {
+ 		this.#reset();
+ 		const message = "provider destroyed";
+-		for (const promises of this.#promises.values()) for (const { reject } of promises) reject(message);
++		// Observe cancellation on fire-and-forget provider commands before rejecting them.
++        // Callers awaiting the original promise still receive the cancellation.
++        for (const promises of this.#promises.values()) for (const { reject, promise } of promises) {
++          promise.catch(() => {});
++          reject(message);
++        }
+ 		this.#promises.clear();
+ 	}
+ 	async play() {
+diff --git a/node_modules/@vidstack/react/server/chunks/vidstack-OhX94O_u.js b/node_modules/@vidstack/react/server/chunks/vidstack-OhX94O_u.js
+index 13acc55..056b8c7 100644
+--- a/node_modules/@vidstack/react/server/chunks/vidstack-OhX94O_u.js
++++ b/node_modules/@vidstack/react/server/chunks/vidstack-OhX94O_u.js
+@@ -119,7 +119,12 @@ var VimeoProvider = class extends EmbedProvider {
+ 		this.#reset();
+ 		this.fullscreen = void 0;
+ 		const message = "provider destroyed";
+-		for (const promises of this.#promises.values()) for (const { reject } of promises) reject(message);
++		// Observe cancellation on fire-and-forget provider commands before rejecting them.
++        // Callers awaiting the original promise still receive the cancellation.
++        for (const promises of this.#promises.values()) for (const { reject, promise } of promises) {
++          promise.catch(() => {});
++          reject(message);
++        }
+ 		this.#promises.clear();
+ 		this.#remote("destroy");
+ 	}
