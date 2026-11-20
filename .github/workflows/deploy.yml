@@ -28,22 +28,35 @@ jobs:
       # 2. Configure SSH
       - name: Configure SSH
         env:
-          SSH_PRIVATE_KEY: ${{ secrets.SERVER_SSH_KEY }}
-          SERVER_HOST: ${{ secrets.SERVER_HOST }}
-          SERVER_USER: ${{ secrets.SERVER_USER }}
-          SERVER_PORT: ${{ secrets.SERVER_PORT }}
+            SSH_PRIVATE_KEY: ${{ secrets.SERVER_SSH_KEY }}
+            SERVER_KNOWN_HOSTS: ${{ secrets.SERVER_KNOWN_HOSTS }}
         run: |
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
+            mkdir -p ~/.ssh
+            chmod 700 ~/.ssh
 
-          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
+            printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+            chmod 600 ~/.ssh/id_ed25519
 
-          # Store the server's verified SSH host key
-          printf '%s\n' "${{ secrets.SERVER_KNOWN_HOSTS }}" \
-            > ~/.ssh/known_hosts
-          chmod 600 ~/.ssh/known_hosts
+            printf '%s\n' "$SERVER_KNOWN_HOSTS" > ~/.ssh/known_hosts
+            chmod 600 ~/.ssh/known_hosts
 
+            echo "SSH configuration completed."
+
+      - name: Test SSH Connection
+        env:
+            SERVER_HOST: ${{ secrets.SERVER_HOST }}
+            SERVER_USER: ${{ secrets.SERVER_USER }}
+            SERVER_PORT: ${{ secrets.SERVER_PORT }}
+        run: |
+            ssh \
+            -i ~/.ssh/id_ed25519 \
+            -p "${SERVER_PORT:-22}" \
+            -o StrictHostKeyChecking=yes \
+            -o BatchMode=yes \
+            -o ConnectTimeout=10 \
+            "$SERVER_USER@$SERVER_HOST" \
+            "echo 'SSH connection successful!'"
+            
       # 3. Deploy to production server
       - name: Deploy NishioHub
         env:
