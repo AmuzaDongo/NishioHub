@@ -51,3 +51,5 @@ Production Compose commands must use the active release file, production env fil
 The local deployment tests simulate success, build failure, migration failure, activation rollback and initial certificate provisioning. GitHub CI performs actual Docker builds. A live TLS issuance cannot be tested without server access and correctly configured public DNS.
 
 References: [Compose startup health checks](https://docs.docker.com/compose/how-tos/startup-order/), [Compose wait options](https://docs.docker.com/reference/cli/docker/compose/up/), [GitHub deployment environments](https://docs.github.com/en/actions/concepts/workflows-and-actions/deployment-environments).
+
+The API CI job is pinned to `ubuntu-24.04` to retain the prebuilt Ruby 3.3.6 required by the Gemfile, lockfile and Docker image. Moving the runner to a newer Ubuntu image requires a coordinated Ruby-version update; changing only `ruby-version` would conflict with the application’s exact Ruby requirement.
