@@ -53,3 +53,26 @@ The local deployment tests simulate success, build failure, migration failure, a
 References: [Compose startup health checks](https://docs.docker.com/compose/how-tos/startup-order/), [Compose wait options](https://docs.docker.com/reference/cli/docker/compose/up/), [GitHub deployment environments](https://docs.github.com/en/actions/concepts/workflows-and-actions/deployment-environments).
 
 The API CI job is pinned to `ubuntu-24.04` to retain the prebuilt Ruby 3.3.6 required by the Gemfile, lockfile and Docker image. Moving the runner to a newer Ubuntu image requires a coordinated Ruby-version update; changing only `ruby-version` would conflict with the application’s exact Ruby requirement.
+
+## Fixing SSH host-key verification
+
+`SERVER_SSH_KEY` identifies the deployment account. `SERVER_KNOWN_HOSTS` identifies the **server**; they are different keys. The known-hosts secret must contain complete `hostname key-type base64-key` lines, not only a `SHA256:...` fingerprint or an account's `authorized_keys` entry. It must match the exact `SERVER_HOST` and SSH port. A DNS name and its IP address are separate known-hosts names.
+
+First, use your hosting provider's trusted server console to obtain the server fingerprint:
+
+```bash
+sudo ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub -E sha256
+```
+
+On your computer, collect the host key using the same host and port as the workflow (replace the example values):
+
+```bash
+deploy_host=YOUR_SERVER_HOST
+deploy_port=22
+ssh-keyscan -T 10 -p "$deploy_port" -t ed25519 "$deploy_host" > server-known-hosts
+ssh-keygen -lf server-known-hosts -E sha256
+```
+
+Compare the SHA256 fingerprint with the trusted console output. **Only if they match**, copy the full contents of `server-known-hosts` into the GitHub Actions secret `SERVER_KNOWN_HOSTS`. If you configured secrets in the `production` environment, update that environment's secret; it overrides a repository secret with the same name. For a nonstandard port, the host field must be `[YOUR_SERVER_HOST]:PORT`; `ssh-keyscan -p` formats it automatically.
+
+Commit/push the workflow validation change and rerun deployment. The workflow now rejects malformed or mismatched entries before SSH and explicitly uses the provided key and known-hosts file. It keeps `StrictHostKeyChecking=yes`. Never trust a freshly scanned key without checking its fingerprint, and never disable strict checking to bypass this failure. For a replaced/rebuilt server, verify its new fingerprint before changing the secret.

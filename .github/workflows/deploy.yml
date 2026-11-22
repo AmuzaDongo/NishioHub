@@ -87,10 +87,22 @@ jobs:
           : "${SERVER_KNOWN_HOSTS:?Missing SERVER_KNOWN_HOSTS}"
           install -m 700 -d ~/.ssh
           printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
-          printf '%s\n' "$SERVER_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          printf '%s\n' "$SERVER_KNOWN_HOSTS" | tr -d '\r' > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/id_ed25519 ~/.ssh/known_hosts
           trap 'rm -f ~/.ssh/id_ed25519' EXIT
-          ssh_args=(-p "${SERVER_PORT:-22}" -o StrictHostKeyChecking=yes -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=30)
+          if ! ssh-keygen -l -f ~/.ssh/known_hosts >/dev/null 2>&1; then
+            echo '::error::SERVER_KNOWN_HOSTS must contain full known_hosts entries, not a fingerprint or the deployment public key. See ops/README.md.'
+            exit 1
+          fi
+          host_lookup="$SERVER_HOST"
+          if [[ "${SERVER_PORT:-22}" != 22 ]]; then
+            host_lookup="[$SERVER_HOST]:$SERVER_PORT"
+          fi
+          if ! ssh-keygen -F "$host_lookup" -f ~/.ssh/known_hosts >/dev/null; then
+            echo '::error::SERVER_KNOWN_HOSTS has no entry matching SERVER_HOST and SERVER_PORT. Scan the exact deployment hostname and port, verify its fingerprint using the server console, and update the production environment secret. See ops/README.md.'
+            exit 1
+          fi
+          ssh_args=(-i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts" -p "${SERVER_PORT:-22}" -o StrictHostKeyChecking=yes -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=30)
           remote="$SERVER_USER@$SERVER_HOST"
           ssh "${ssh_args[@]}" "$remote" "mkdir -p '$DEPLOY_PATH/releases/$RELEASE_SHA'"
           git archive "$RELEASE_SHA" | ssh "${ssh_args[@]}" "$remote" "tar -x -C '$DEPLOY_PATH/releases/$RELEASE_SHA'"
