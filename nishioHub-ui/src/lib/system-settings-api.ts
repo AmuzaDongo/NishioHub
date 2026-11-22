@@ -1,6 +1,8 @@
+import type {HowItWorksContent} from './how-it-works-api';
 import api from '@/lib/axios';
 import type { AboutTeamDraft } from './about-api';
 export interface PlatformSettings {
+  how_it_works:HowItWorksContent;
   about_story_video_url: string; about_team: AboutTeamDraft[];
   platform_name: string; tagline: string; organization_name: string; support_email: string; support_phone: string;
   timezone: string; language: string; date_format: string; currency: string; platform_mode: 'live' | 'staging' | 'maintenance';

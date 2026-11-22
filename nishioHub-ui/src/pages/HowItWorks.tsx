@@ -1,410 +1,397 @@
+import { useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { Helmet } from "react-helmet-async";
+import {
+  ArrowRight,
+  CalendarDays,
+  ChartNoAxesCombined,
+  Check,
+  ClipboardList,
+  GraduationCap,
+  Handshake,
+  LaptopMinimal,
+  Play,
+  School,
+  Settings,
+  Users,
+} from "lucide-react";
 import { MainLayout } from "@/components/layout/main-layout";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Check, Clock, MessageSquare, Search, ShieldCheck, Star, User, Users } from "lucide-react";
-import { Link } from "react-router-dom";
-import { Helmet } from "react-helmet";
-
+import { Skeleton } from "@/components/ui/skeleton";
+import { VideoDialog, PlatformVideo } from "@/components/media/platform-video";
+import { HowItWorksEditor } from "@/components/admin/how-it-works-editor";
+import { getHowItWorks } from "@/lib/how-it-works-api";
+import { useAuth } from "@/lib/auth-context";
+import { usePlatform } from "@/lib/platform-context";
+import { hasRole, isPlatformAdmin } from "@/lib/utils";
+import { operationError } from "@/components/admin/dashboard-operations";
+const audienceIcons = {
+  learners: GraduationCap,
+  mentors: Users,
+  schools: School,
+  organizations: Handshake,
+};
+const audienceLinks = {
+  learners: "/programs",
+  mentors: "/become-a-mentor",
+  schools: "/partner-with-us",
+  organizations: "/partner-with-us",
+};
+const stepIcons = [
+  LaptopMinimal,
+  ClipboardList,
+  CalendarDays,
+  ChartNoAxesCombined,
+];
+const colors = [
+  "from-violet-50 to-purple-50 border-violet-200",
+  "from-blue-50 to-violet-50 border-blue-200",
+  "from-amber-50 to-white border-amber-200",
+  "from-emerald-50 to-white border-emerald-200",
+];
+const badges = ["bg-violet-700", "bg-blue-600", "bg-amber-400", "bg-green-600"];
+function Heading({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className='mb-9 flex items-center justify-center gap-4 text-center text-2xl font-extrabold tracking-tight md:text-3xl'>
+      <span className='h-1 w-10 shrink-0 rounded-full bg-violet-700 md:w-16' />
+      {children}
+      <span className='h-1 w-10 shrink-0 rounded-full bg-violet-700 md:w-16' />
+    </h2>
+  );
+}
 export default function HowItWorksPage() {
-  const menteeSteps = [
-    {
-      icon: <User className="h-8 w-8" />,
-      title: "Create Your Profile",
-      description: "Sign up and complete your profile with your background, goals, and the areas where you're seeking guidance."
-    },
-    {
-      icon: <Search className="h-8 w-8" />,
-      title: "Find the Right Mentor",
-      description: "Browse mentor profiles or use our matching algorithm to find mentors who align with your goals and expertise needs."
-    },
-    {
-      icon: <Clock className="h-8 w-8" />,
-      title: "Book a Session",
-      description: "Select a service, choose an available time slot that works for you, and complete the booking process."
-    },
-    {
-      icon: <MessageSquare className="h-8 w-8" />,
-      title: "Connect & Learn",
-      description: "Attend your session prepared with questions. Follow up with your mentor through our messaging system."
-    },
-    {
-      icon: <Star className="h-8 w-8" />,
-      title: "Leave Feedback",
-      description: "After your session, share your experience by leaving a review for your mentor to help others in their selection."
-    }
+  const { user, isLoading } = useAuth();
+  const platform = usePlatform();
+  const navigate = useNavigate();
+  const steps = useRef<HTMLElement>(null);
+  const [watch, setWatch] = useState(false);
+  const [edit, setEdit] = useState(false);
+  const query = useQuery({
+    queryKey: ["public-how-it-works"],
+    queryFn: getHowItWorks,
+    staleTime: 30000,
+    refetchInterval: 60000,
+  });
+  const c = query.data;
+  const admin = isPlatformAdmin(user);
+  const canManage =
+    !!user && admin && user.management_permissions?.includes("system.manage");
+  const dashboard = admin
+    ? "/admin"
+    : hasRole(user, "mentee")
+      ? "/mentee/dashboard"
+      : "/dashboard";
+  const startTo = user
+    ? dashboard
+    : platform.registration_enabled
+      ? "/register"
+      : "/contact";
+  const startLabel = user
+    ? "Go to My Dashboard"
+    : platform.registration_enabled
+      ? "Get Started Now"
+      : "Contact Our Team";
+  const targets = [
+    startTo,
+    user ? "/profile" : startTo,
+    "/programs",
+    user ? (admin ? "/admin/goals" : "/my-goals") : "/learn",
   ];
-  
-  const mentorSteps = [
-    {
-      icon: <User className="h-8 w-8" />,
-      title: "Create Your Profile",
-      description: "Sign up as a mentor and showcase your expertise, experience, and the value you can provide to mentees."
-    },
-    {
-      icon: <ShieldCheck className="h-8 w-8" />,
-      title: "Verification Process",
-      description: "Complete our verification process so mentees can trust in your credentials and expertise."
-    },
-    {
-      icon: <Users className="h-8 w-8" />,
-      title: "Set Up Your Services",
-      description: "Define the services you offer, set your rates, and specify your availability for mentorship sessions."
-    },
-    {
-      icon: <Clock className="h-8 w-8" />,
-      title: "Manage Bookings",
-      description: "Accept session requests, manage your calendar, and prepare for your mentorship sessions."
-    },
-    {
-      icon: <MessageSquare className="h-8 w-8" />,
-      title: "Mentor & Grow",
-      description: "Conduct sessions, provide follow-up support through messaging, and build your reputation through reviews."
-    }
-  ];
-  
-  const faqs = [
-    {
-      question: "How do I find the right mentor for my needs?",
-      answer: "You can browse mentors by category, use filters to narrow down options based on expertise, price range, or ratings, and read reviews from other mentees. Our matching algorithm can also suggest mentors based on your profile and goals."
-    },
-    {
-      question: "What happens if I need to cancel or reschedule a session?",
-      answer: "You can cancel or reschedule sessions through your dashboard. Cancellations made more than 24 hours before the session are fully refundable. For cancellations within 24 hours, refund policies vary by mentor."
-    },
-    {
-      question: "How do payments work on nishioHub?",
-      answer: "Payments are securely processed when you book a session. The funds are held until the session is completed, then released to the mentor. This ensures both parties are protected throughout the process."
-    },
-    {
-      question: "Can I try a session before committing to multiple sessions?",
-      answer: "Yes! Many mentors offer single sessions or introductory consultations. You can book these to ensure compatibility before investing in a longer-term mentorship arrangement."
-    },
-    {
-      question: "How do I become a mentor on nishioHub?",
-      answer: "Sign up and select 'Mentor' as your role. Complete your profile with your expertise, experience, and the services you want to offer. Our team will review your application, and once approved, you can start accepting mentees."
-    }
-  ];
-  
+  const heading =
+    c?.heading === "How NishioHub Works"
+      ? `How ${platform.platform_name} Works`
+      : c?.heading || "";
+  const lastSpace = heading.lastIndexOf(" ");
   return (
     <MainLayout>
       <Helmet>
-        <title>How It Works - nishioHub</title>
+        <title>How It Works | {platform.platform_name}</title>
+        <meta
+          name='description'
+          content={
+            c?.description ||
+            "Discover how to join NishioHub, complete your profile, find mentorship and grow your skills."
+          }
+        />
       </Helmet>
-      
-      {/* Hero Section */}
-      <section className="bg-gradient-to-br from-primary/10 to-accent/10 py-20">
-        <div className="container mx-auto px-4 text-center">
-          <Badge className="mb-4">Simple Process</Badge>
-          <h1 className="text-4xl md:text-5xl font-bold mb-6">How nishioHub Works</h1>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto mb-10">
-            nishioHub connects mentees with experienced mentors in a straightforward, 
-            efficient process designed to facilitate meaningful mentorship relationships.
-          </p>
-          <div className="flex justify-center gap-4">
-            <Button size="lg" asChild>
-              <Link to="/register">Get Started</Link>
-            </Button>
-            <Button size="lg" variant="outline" asChild>
-              <Link to="/services">Browse Mentors</Link>
-            </Button>
-          </div>
-        </div>
-      </section>
-      
-      {/* Process Tabs */}
-      <section className="py-16 container mx-auto px-4">
-        <Tabs defaultValue="mentee" className="max-w-4xl mx-auto">
-          <div className="flex justify-center mb-8">
-            <TabsList className="grid w-full max-w-md grid-cols-2">
-              <TabsTrigger value="mentee">For Mentees</TabsTrigger>
-              <TabsTrigger value="mentor">For Mentors</TabsTrigger>
-            </TabsList>
-          </div>
-          
-          <TabsContent value="mentee">
-            <h2 className="text-3xl font-bold mb-10 text-center">How to Find & Connect with Mentors</h2>
-            <div className="space-y-12">
-              {menteeSteps.map((step, index) => (
-                <div key={index} className="flex flex-col md:flex-row gap-6 items-start md:items-center">
-                  <div className="bg-primary/10 p-4 rounded-full text-primary flex-shrink-0">
-                    {step.icon}
+      {query.isPending ? (
+        <HowSkeleton />
+      ) : query.isError ? (
+        <section
+          role='alert'
+          className='mx-auto my-12 max-w-xl rounded-2xl border border-violet-100 bg-white p-8 text-center'
+        >
+          <h1 className='text-2xl font-bold'>How It Works</h1>
+          <p className='my-4 text-sm'>{operationError(query.error)}</p>
+          <button
+            className='rounded-lg bg-violet-700 px-5 py-3 font-bold text-white'
+            onClick={() => query.refetch()}
+          >
+            Retry Page
+          </button>
+        </section>
+      ) : (
+        c && (
+          <>
+            <section className='overflow-hidden bg-[#26134d] text-white'>
+              <div className='relative mx-auto max-w-[1536px] lg:min-h-[335px]'>
+                <img
+                  src={c.hero_image}
+                  alt='Illustrative mentor helping learners explore opportunities together'
+                  fetchPriority='high'
+                  className='h-60 w-full object-cover object-center lg:absolute lg:inset-y-0 lg:right-0 lg:h-full lg:w-[58%]'
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = "/images/learning/library-hero.webp";
+                  }}
+                />
+                {c.overview_video_url && (
+                  <button
+                    type='button'
+                    aria-label='Play How It Works overview'
+                    onClick={() => setWatch(true)}
+                    className='absolute right-1/2 top-28 z-10 grid size-20 -translate-y-1/2 translate-x-1/2 place-items-center rounded-full border-2 border-white bg-black/40 text-white shadow-lg hover:bg-violet-700/70 lg:right-[26%] lg:top-1/2'
+                  >
+                    <Play size={38} className='ml-1 fill-white' />
+                  </button>
+                )}
+                <div
+                  aria-hidden='true'
+                  className='absolute inset-y-0 left-0 hidden w-[54%] bg-yellow-400 lg:block'
+                  style={{ clipPath: "ellipse(100% 160% at 0% 0%)" }}
+                />
+                <div
+                  aria-hidden='true'
+                  className='absolute inset-y-0 left-0 hidden w-[51%] bg-gradient-to-r from-[#251343] to-violet-800 lg:block'
+                  style={{ clipPath: "ellipse(100% 180% at 0% 0%)" }}
+                />
+                <div className='relative px-6 py-7 lg:w-[52%] lg:px-11'>
+                  <p className='mb-4 inline-flex items-center gap-3 rounded-full bg-purple-500/75 px-4 py-1.5 text-sm font-bold'>
+                    <Settings size={25} />
+                    How It Works
+                  </p>
+                  <h1 className='text-4xl font-extrabold leading-tight tracking-tight xl:text-5xl'>
+                    {lastSpace > 0 ? heading.slice(0, lastSpace) : heading}{" "}
+                    {lastSpace > 0 && (
+                      <span className='text-yellow-300'>
+                        {heading.slice(lastSpace + 1)}
+                      </span>
+                    )}
+                  </h1>
+                  <p className='mt-3 max-w-lg text-base leading-relaxed md:text-lg'>
+                    {c.description}
+                  </p>
+                  <div className='mt-5 flex flex-wrap gap-3'>
+                    <button
+                      className='inline-flex items-center gap-3 rounded-lg bg-white px-5 py-3 text-sm font-bold text-violet-800 hover:bg-violet-50'
+                      onClick={() =>
+                        steps.current?.scrollIntoView({
+                          behavior: window.matchMedia(
+                            "(prefers-reduced-motion: reduce)",
+                          ).matches
+                            ? "instant"
+                            : "smooth",
+                          block: "start",
+                        })
+                      }
+                    >
+                      Explore the Steps <ArrowRight size={19} />
+                    </button>
+                    <Link
+                      to={startTo}
+                      aria-disabled={isLoading}
+                      className='inline-flex items-center gap-3 rounded-lg border-2 border-white px-5 py-2.5 text-sm font-bold hover:bg-white/10'
+                    >
+                      {startLabel}
+                      <ArrowRight size={20} />
+                    </Link>
                   </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <Badge variant="outline" className="rounded-full w-6 h-6 p-0 flex items-center justify-center">
-                        {index + 1}
-                      </Badge>
-                      <h3 className="text-xl font-bold">{step.title}</h3>
-                    </div>
-                    <p className="text-muted-foreground">{step.description}</p>
-                  </div>
+                  {c.overview_video_url && (
+                    <p className='mt-3 text-xs text-violet-100'>
+                      Play the overview on the banner ·{" "}
+                      {Math.ceil(c.overview_seconds / 60)} min
+                    </p>
+                  )}
                 </div>
-              ))}
-            </div>
-            
-            <div className="mt-12 text-center">
-              <Button size="lg" asChild>
-                <Link to="/register?role=mentee">Sign Up as a Mentee</Link>
-              </Button>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="mentor">
-            <h2 className="text-3xl font-bold mb-10 text-center">How to Become a Mentor</h2>
-            <div className="space-y-12">
-              {mentorSteps.map((step, index) => (
-                <div key={index} className="flex flex-col md:flex-row gap-6 items-start md:items-center">
-                  <div className="bg-primary/10 p-4 rounded-full text-primary flex-shrink-0">
-                    {step.icon}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <Badge variant="outline" className="rounded-full w-6 h-6 p-0 flex items-center justify-center">
-                        {index + 1}
-                      </Badge>
-                      <h3 className="text-xl font-bold">{step.title}</h3>
-                    </div>
-                    <p className="text-muted-foreground">{step.description}</p>
-                  </div>
+              </div>
+            </section>
+            <section
+              ref={steps}
+              id='getting-started'
+              className='mx-auto max-w-[1440px] scroll-mt-24 px-5 pb-3 pt-7 md:px-10'
+            >
+              <Heading>Get Started in 4 Simple Steps</Heading>
+              <ol className='grid gap-x-8 gap-y-10 sm:grid-cols-2 xl:grid-cols-4'>
+                {c.steps.map((s, i) => {
+                  const Icon = stepIcons[i];
+                  return (
+                    <li key={i} className='relative'>
+                      <Link
+                        to={targets[i]}
+                        className={`relative flex h-full min-h-[247px] flex-col items-center rounded-2xl border bg-gradient-to-br px-5 pb-5 pt-10 text-center shadow-sm transition hover:-translate-y-1 hover:shadow-md focus-visible:outline-violet-700 ${colors[i]}`}
+                      >
+                        <span
+                          className={`absolute -top-5 grid size-12 place-items-center rounded-full border-2 border-white text-2xl font-extrabold text-white ${badges[i]}`}
+                        >
+                          {i + 1}
+                        </span>
+                        <Icon
+                          aria-hidden='true'
+                          size={82}
+                          strokeWidth={1.8}
+                          className='mb-4 text-violet-700 drop-shadow-md'
+                        />
+                        <h3 className='text-lg font-extrabold tracking-tight'>
+                          {s.title}
+                        </h3>
+                        <p className='mt-2 text-sm leading-snug'>
+                          {s.description}
+                        </p>
+                      </Link>
+                      {i < 3 && (
+                        <ArrowRight
+                          aria-hidden='true'
+                          className='absolute -right-7 top-1/2 hidden text-violet-600 xl:block'
+                          size={25}
+                        />
+                      )}
+                    </li>
+                  );
+                })}
+              </ol>
+            </section>
+            <section className='mx-auto max-w-[1440px] px-4 pb-7 pt-6'>
+              <Heading>It Works for Everyone</Heading>
+              <div className='grid gap-4 sm:grid-cols-2 xl:grid-cols-4'>
+                {c.audiences.map((a) => {
+                  const Icon = audienceIcons[a.id];
+                  return (
+                    <Link
+                      key={a.id}
+                      to={audienceLinks[a.id]}
+                      className='group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-violet-200 bg-white shadow-sm transition hover:shadow-md'
+                    >
+                      <div className='h-32 overflow-hidden md:h-36'>
+                        <img
+                          src={a.image}
+                          alt={a.title}
+                          loading='lazy'
+                          className='size-full object-cover transition group-hover:scale-105 motion-reduce:transform-none'
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src =
+                              "/images/home/mentorship-hero.webp";
+                          }}
+                        />
+                      </div>
+                      <div className='relative flex-1 px-5 pb-4 pt-3'>
+                        <span className='absolute -top-6 left-3 grid size-14 place-items-center rounded-full border-2 border-white bg-violet-50 text-violet-700'>
+                          <Icon size={34} />
+                        </span>
+                        <h3 className='mb-4 pl-12 text-lg font-extrabold tracking-tight'>
+                          {a.title}
+                        </h3>
+                        <ul className='space-y-2 text-sm'>
+                          {a.points.map((p, i) => (
+                            <li key={i} className='flex items-start gap-2'>
+                              <Check
+                                size={20}
+                                strokeWidth={3}
+                                className='shrink-0 text-violet-700'
+                              />
+                              <span>{p}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </section>
+            <section className='overflow-hidden bg-gradient-to-r from-violet-900 via-[#351361] to-violet-700 text-white'>
+              <div className='mx-auto flex max-w-[1440px] flex-col items-center gap-5 px-6 py-6 text-center md:flex-row md:text-left'>
+                <img
+                  src='/images/onboarding/graduation-books.webp'
+                  alt='Illustrative learning books and graduation cap'
+                  className='h-28 w-44 object-contain mix-blend-screen md:w-60'
+                />
+                <div className='flex-1 md:border-l md:border-white/70 md:pl-7'>
+                  <h2 className='text-3xl font-extrabold tracking-tight'>
+                    Ready to Get Started?
+                  </h2>
+                  <p className='mt-2 max-w-lg text-sm md:text-base'>
+                    Join a growing community of learners, mentors, schools and
+                    partners driving change through learning.
+                  </p>
                 </div>
-              ))}
-            </div>
-            
-            <div className="mt-12 text-center">
-              <Button size="lg" asChild>
-                <Link to="/register?role=mentor">Apply to be a Mentor</Link>
-              </Button>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </section>
-      
-      <Separator />
-      
-      {/* Benefits Section */}
-      <section className="py-16 bg-muted/30">
-        <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold mb-12 text-center">The nishioHub Advantage</h2>
-          
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <Card>
-              <CardHeader>
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4">
-                  <Search className="h-5 w-5" />
-                </div>
-                <CardTitle>Intelligent Matching</CardTitle>
-                <CardDescription>
-                  Our algorithm suggests the most compatible mentors based on your goals, industry, and expertise needs.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2">
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-primary mr-2" />
-                    <span>Personalized recommendations</span>
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-primary mr-2" />
-                    <span>Filter by expertise and experience</span>
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-primary mr-2" />
-                    <span>Find mentors in your industry</span>
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4">
-                  <ShieldCheck className="h-5 w-5" />
-                </div>
-                <CardTitle>Verified Mentors</CardTitle>
-                <CardDescription>
-                  All mentors undergo a verification process to ensure they have the expertise they claim.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2">
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-primary mr-2" />
-                    <span>Identity verification</span>
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-primary mr-2" />
-                    <span>Credential checking</span>
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-primary mr-2" />
-                    <span>Transparent review system</span>
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4">
-                  <MessageSquare className="h-5 w-5" />
-                </div>
-                <CardTitle>Seamless Communication</CardTitle>
-                <CardDescription>
-                  Our platform provides integrated tools for scheduling, video calls, and messaging.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2">
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-primary mr-2" />
-                    <span>Integrated video conferencing</span>
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-primary mr-2" />
-                    <span>Direct messaging system</span>
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-primary mr-2" />
-                    <span>Calendar integration</span>
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4">
-                  <Clock className="h-5 w-5" />
-                </div>
-                <CardTitle>Flexible Scheduling</CardTitle>
-                <CardDescription>
-                  Book sessions that fit your schedule with our easy-to-use calendar system.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2">
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-primary mr-2" />
-                    <span>Real-time availability</span>
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-primary mr-2" />
-                    <span>Timezone conversion</span>
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-primary mr-2" />
-                    <span>Easy rescheduling</span>
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M12 2v6a2 2 0 0 0 2 2h6v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h6Z"/><path d="M14 2v6h6"/><path d="M9 14h6"/><path d="M9 18h6"/></svg>
-                </div>
-                <CardTitle>Session Tracking</CardTitle>
-                <CardDescription>
-                  Keep track of your mentorship journey with detailed session history and notes.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2">
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-primary mr-2" />
-                    <span>Session summaries</span>
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-primary mr-2" />
-                    <span>Progress tracking</span>
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-primary mr-2" />
-                    <span>Goal achievement monitoring</span>
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 18V6"/></svg>
-                </div>
-                <CardTitle>Secure Payments</CardTitle>
-                <CardDescription>
-                  Our escrow payment system ensures fair transactions for both mentors and mentees.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2">
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-primary mr-2" />
-                    <span>Secure payment processing</span>
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-primary mr-2" />
-                    <span>Funds released after session</span>
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="h-5 w-5 text-primary mr-2" />
-                    <span>Transparent pricing</span>
-                  </li>
-                </ul>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-      
-      {/* FAQ Section */}
-      <section className="py-16 container mx-auto px-4">
-        <div className="max-w-3xl mx-auto">
-          <h2 className="text-3xl font-bold mb-12 text-center">Frequently Asked Questions</h2>
-          
-          <div className="space-y-6">
-            {faqs.map((faq, index) => (
-              <Card key={index}>
-                <CardHeader>
-                  <CardTitle className="text-xl">{faq.question}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">{faq.answer}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-          
-          <div className="mt-12 text-center">
-            <p className="text-muted-foreground mb-6">Still have questions? We're here to help.</p>
-            <Button asChild>
-              <Link to="/contact">Contact Support</Link>
-            </Button>
-          </div>
-        </div>
-      </section>
-      
-      {/* CTA Section */}
-      <section className="bg-gradient-to-br from-primary/10 to-accent/10 py-16">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold mb-4">Ready to Start Your Mentorship Journey?</h2>
-          <p className="text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Whether you're looking to find a mentor or share your expertise, nishioHub makes it easy to get started.
-          </p>
-          <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <Button size="lg" asChild>
-              <Link to="/register">Create Your Account</Link>
-            </Button>
-            <Button size="lg" variant="outline" asChild>
-              <Link to="/services">Browse Mentors</Link>
-            </Button>
-          </div>
-        </div>
-      </section>
+                <Link
+                  to={startTo}
+                  className='inline-flex shrink-0 items-center gap-4 rounded-xl bg-white px-7 py-4 text-lg font-extrabold text-violet-800 shadow-sm hover:bg-violet-50'
+                >
+                  {user
+                    ? "Go to My Dashboard"
+                    : platform.registration_enabled
+                      ? "Create a Free Account"
+                      : "Contact Our Team"}
+                  <ArrowRight size={24} />
+                </Link>
+              </div>
+            </section>
+            {canManage && (
+              <div className='mx-auto flex max-w-[1440px] justify-end px-5 py-4'>
+                <button
+                  onClick={() => setEdit(true)}
+                  className='inline-flex items-center gap-2 rounded-lg border border-violet-200 px-4 py-2 text-sm font-bold text-violet-700'
+                >
+                  <Settings size={18} />
+                  Manage How It Works
+                </button>
+              </div>
+            )}
+            <VideoDialog
+              open={watch}
+              onOpenChange={setWatch}
+              title='How It Works overview'
+            >
+              {c.overview_video_url && (
+                <PlatformVideo
+                  src={c.overview_video_url}
+                  title='How It Works overview'
+                  force
+                />
+              )}
+            </VideoDialog>
+            {canManage && (
+              <HowItWorksEditor open={edit} onClose={() => setEdit(false)} />
+            )}
+          </>
+        )
+      )}
     </MainLayout>
+  );
+}
+function HowSkeleton() {
+  return (
+    <div
+      role='status'
+      aria-busy='true'
+      className='mx-auto max-w-[1440px] space-y-8 p-5'
+    >
+      <span className='sr-only'>Loading How It Works</span>
+      <Skeleton className='h-80 w-full rounded-2xl' />
+      <Skeleton className='mx-auto h-8 w-2/3' />
+      <div className='grid gap-6 sm:grid-cols-2 xl:grid-cols-4'>
+        {[0, 1, 2, 3].map((i) => (
+          <Skeleton key={i} className='h-60 rounded-2xl' />
+        ))}
+      </div>
+      <Skeleton className='mx-auto h-8 w-2/3' />
+      <div className='grid gap-4 sm:grid-cols-2 xl:grid-cols-4'>
+        {[0, 1, 2, 3].map((i) => (
+          <Skeleton key={i} className='h-64 rounded-2xl' />
+        ))}
+      </div>
+    </div>
   );
 }

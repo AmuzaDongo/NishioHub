@@ -1,4 +1,5 @@
 Rails.application.routes.draw do
+  get "/up", to: "health#show"
   namespace :api do
     namespace :v1 do
       get 'me/mentor-application', to: 'mentor_applications#show'
@@ -14,6 +15,7 @@ Rails.application.routes.draw do
       get 'platform/events/discover', to: 'public_events#index'
       get 'platform/events/discover/:id', to: 'public_events#show'
       get 'platform/events/discover/:id/calendar', to: 'public_events#calendar'
+      get 'platform/how-it-works', to: 'public_home#how_it_works'
       get 'platform/about', to: 'public_home#about'
       get 'platform/home', to: 'public_home#show'
       get 'platform/catalog', to: 'public_home#catalog'

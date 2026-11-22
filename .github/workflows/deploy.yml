@@ -1,115 +1,96 @@
-name: Deploy NishioHub to Production
-
+name: Test and deploy NishioHub
 on:
   push:
-    branches:
-      - main
-
+    branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
-
 permissions:
   contents: read
-
 concurrency:
-  group: nishiohub-production
+  group: nishiohub-${{ github.event_name == 'pull_request' && github.ref || 'production' }}
   cancel-in-progress: false
-
 jobs:
-  deploy:
-    name: Deploy Rails API and React UI
+  deployment-config:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-
     steps:
-      # 1. Checkout the repository
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      # 2. Configure SSH
-      - name: Configure SSH
+      - uses: actions/checkout@v4
+      - run: bash -n ops/deploy.sh ops/renew-certificates.sh nishioHub-api/bin/docker-entrypoint
+      - run: python3 -m unittest discover -s ops/tests -v
+      - run: docker compose --env-file ops/production.env.example config --quiet
+      - run: docker compose --env-file ops/production.env.example build api ui
+  ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: nishioHub-ui/package-lock.json
+      - run: npm ci
+        working-directory: nishioHub-ui
+      - run: npm run typecheck && npm run lint && npm run build
+        working-directory: nishioHub-ui
+  api:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
         env:
-            SSH_PRIVATE_KEY: ${{ secrets.SERVER_SSH_KEY }}
-            SERVER_KNOWN_HOSTS: ${{ secrets.SERVER_KNOWN_HOSTS }}
-        run: |
-            mkdir -p ~/.ssh
-            chmod 700 ~/.ssh
-
-            printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
-            chmod 600 ~/.ssh/id_ed25519
-
-            printf '%s\n' "$SERVER_KNOWN_HOSTS" > ~/.ssh/known_hosts
-            chmod 600 ~/.ssh/known_hosts
-
-            echo "SSH configuration completed."
-
-      - name: Test SSH Connection
-        env:
-            SERVER_HOST: ${{ secrets.SERVER_HOST }}
-            SERVER_USER: ${{ secrets.SERVER_USER }}
-            SERVER_PORT: ${{ secrets.SERVER_PORT }}
-        run: |
-            ssh \
-            -i ~/.ssh/id_ed25519 \
-            -p "${SERVER_PORT:-22}" \
-            -o StrictHostKeyChecking=yes \
-            -o BatchMode=yes \
-            -o ConnectTimeout=10 \
-            "$SERVER_USER@$SERVER_HOST" \
-            "echo 'SSH connection successful!'"
-            
-      # 3. Deploy to production server
-      - name: Deploy NishioHub
-        env:
-          SERVER_HOST: ${{ secrets.SERVER_HOST }}
-          SERVER_USER: ${{ secrets.SERVER_USER }}
-          SERVER_PORT: ${{ secrets.SERVER_PORT }}
-        run: |
-          ssh \
-            -i ~/.ssh/id_ed25519 \
-            -p "${SERVER_PORT:-22}" \
-            -o StrictHostKeyChecking=yes \
-            "$SERVER_USER@$SERVER_HOST" << 'EOF'
-
-            set -e
-
-            echo "Starting NishioHub deployment..."
-
-            cd /var/www/nishioHub
-
-            # Pull latest code
-            git fetch origin main
-            git pull --ff-only origin main
-
-            # Build updated Docker images
-            docker compose build
-
-            # Start PostgreSQL first
-            docker compose up -d --wait db
-
-            # Run Rails database migrations
-            docker compose run --rm api \
-              bin/rails db:migrate
-
-            # Start updated services
-            docker compose up -d --wait --remove-orphans
-
-            # Remove unused Docker images
-            docker image prune -f
-
-            echo "NishioHub deployment completed!"
-
-          EOF
-
-      # 4. Verify deployment
-      - name: Verify Production Deployment
+          POSTGRES_USER: nishiohub
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: nishiohub_test
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      RAILS_ENV: test
+      DATABASE_URL: postgres://nishiohub:test_password@127.0.0.1:5432/nishiohub_test
+      SECRET_KEY: ci_test_key_only
+      EMAIL_TOKEN_SECRET: ci_test_email_key_only
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3.6'
+          bundler-cache: true
+          working-directory: nishioHub-api
+      - run: bin/rails db:migrate && bin/rails test
+        working-directory: nishioHub-api
+  deploy:
+    needs: [ui, api, deployment-config]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy the tested commit over SSH
         env:
           SERVER_HOST: ${{ secrets.SERVER_HOST }}
           SERVER_USER: ${{ secrets.SERVER_USER }}
           SERVER_PORT: ${{ secrets.SERVER_PORT }}
+          SSH_PRIVATE_KEY: ${{ secrets.SERVER_SSH_KEY }}
+          SERVER_KNOWN_HOSTS: ${{ secrets.SERVER_KNOWN_HOSTS }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/var/www/nishioHub' }}
+          RELEASE_SHA: ${{ github.sha }}
+        shell: bash
         run: |
-          ssh \
-            -i ~/.ssh/id_ed25519 \
-            -p "${SERVER_PORT:-22}" \
-            -o StrictHostKeyChecking=yes \
-            "$SERVER_USER@$SERVER_HOST" \
-            "cd /var/www/nishioHub && docker compose ps"
+          set -euo pipefail
+          [[ "$DEPLOY_PATH" =~ ^/[a-zA-Z0-9/_-]+$ ]]
+          [[ "$SERVER_USER" =~ ^[a-zA-Z0-9_-]+$ ]]
+          [[ "$SERVER_HOST" =~ ^[a-zA-Z0-9.-]+$ ]]
+          [[ "${SERVER_PORT:-22}" =~ ^[0-9]+$ ]]
+          [[ "$RELEASE_SHA" =~ ^[a-f0-9]{40}$ ]]
+          : "${SSH_PRIVATE_KEY:?Missing SERVER_SSH_KEY}"
+          : "${SERVER_KNOWN_HOSTS:?Missing SERVER_KNOWN_HOSTS}"
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          printf '%s\n' "$SERVER_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_ed25519 ~/.ssh/known_hosts
+          trap 'rm -f ~/.ssh/id_ed25519' EXIT
+          ssh_args=(-p "${SERVER_PORT:-22}" -o StrictHostKeyChecking=yes -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=30)
+          remote="$SERVER_USER@$SERVER_HOST"
+          ssh "${ssh_args[@]}" "$remote" "mkdir -p '$DEPLOY_PATH/releases/$RELEASE_SHA'"
+          git archive "$RELEASE_SHA" | ssh "${ssh_args[@]}" "$remote" "tar -x -C '$DEPLOY_PATH/releases/$RELEASE_SHA'"
+          ssh "${ssh_args[@]}" "$remote" "bash '$DEPLOY_PATH/releases/$RELEASE_SHA/ops/deploy.sh' '$DEPLOY_PATH' '$RELEASE_SHA'"

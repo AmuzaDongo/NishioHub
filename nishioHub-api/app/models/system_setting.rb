@@ -10,7 +10,7 @@ class SystemSetting < ApplicationRecord
     'password_min_length' => 8, 'max_upload_mb' => 10,
     'maintenance_message' => 'NishioHub is undergoing maintenance. Please check back shortly.',
     'allowed_meeting_hosts' => [], 'support_url' => '',
-    'about_story_video_url' => '', 'about_team' => []
+    'about_story_video_url' => '', 'about_team' => [], 'how_it_works' => HowItWorksContent::DEFAULTS
   }.freeze
   ENUMS = { 'timezone' => %w[Africa/Kampala Africa/Nairobi Africa/Kigali UTC],
     'language' => %w[en-UG en-US en-GB], 'currency' => %w[UGX USD KES TZS RWF EUR GBP],
@@ -81,6 +81,7 @@ class SystemSetting < ApplicationRecord
     unless video == '' || (public_about_url?(video) && URI.parse(video).path.match?(/\.(mp4|webm)\z/i))
       errors.add(:about_story_video_url, 'must be an HTTPS MP4 or WebM video URL, or blank')
     end
+    HowItWorksContent.validate(self,data['how_it_works'])
     team = data['about_team']
     valid_team = team.is_a?(Array) && team.length <= 20 && team.all? do |member|
       member.is_a?(Hash) && (member.keys - %w[name title bio photo_url published]).empty? &&

@@ -5,7 +5,7 @@ default: &default
   host: <%= ENV.fetch("DB_HOST", "127.0.0.1") %>
   port: <%= ENV.fetch("DB_PORT", 5432) %>
   username: <%= ENV.fetch("DB_USER", "nishiohub") %>
-  password: <%= ENV.fetch("DB_PASSWORD", "nishiohub123") %>
+  password: <%= ENV.fetch("DB_PASSWORD", "nishiohub123").to_json %>
 
 development:
   <<: *default
@@ -17,4 +17,5 @@ test:
 
 production:
   <<: *default
+  database: <%= ENV.fetch("DB_NAME", "nishiohub_production") %>
   url: <%= ENV["DATABASE_URL"] %>

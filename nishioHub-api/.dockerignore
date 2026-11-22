@@ -10,3 +10,5 @@ public/media/profiles/*
 .env
 .env.*
 !.env.example
+config/master.key
+config/credentials/*.key

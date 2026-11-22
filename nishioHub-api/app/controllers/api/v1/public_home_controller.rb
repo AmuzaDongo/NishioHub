@@ -5,6 +5,9 @@ class Api::V1::PublicHomeController < ApplicationController
       .includes(:profile,avatar_attachment: :blob,mentor_profile: [:skills,avatar_attachment: :blob]).order(id: :desc).limit(4)
     render json:{mentors:mentors.map{|u|{id:u.id,name:u.full_name,title:u.mentor_profile.title,skills:u.mentor_profile.skills.map(&:name).first(3),verified:true,avatar:portrait(u)}},events:public_events.limit(3).map{|e|event_json(e)}}
   end
+  def how_it_works
+    render json:SystemSetting.config['how_it_works']
+  end
   def about
     config=SystemSetting.config
     mentors=User.with_role('mentor').where(is_active:true).joins(:mentor_profile).where(mentor_profiles:{is_verified:true,is_published:true})

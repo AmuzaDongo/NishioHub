@@ -2,7 +2,7 @@ class Api::V1::RolesController < ApplicationController
   before_action :require_admin!, except: :mentor_mentee
 
   def mentor_mentee
-    render json: Role.where(name: %w[mentor mentee]).order(:id).map { |role| RoleSerializer.new(role).as_json }
+    render json: Role.in_order_of(:name, %w[mentor mentee]).map { |role| RoleSerializer.new(role).as_json }
   end
 
   def index

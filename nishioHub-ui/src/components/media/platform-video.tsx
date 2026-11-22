@@ -116,7 +116,7 @@ export function PlatformVideo({
       }
       playsInline
       autoPlay
-      load='eager'
+      load='eager' posterLoad='custom'
       currentTime={Math.max(0, start || videoStart(src))}
       onProviderChange={configureProvider}
       onError={() => setFailed(true)}

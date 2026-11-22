@@ -1,11 +1,6 @@
-#!/bin/bash -e
-
-# Rails 8 entrypoint: make sure the pid directory exists and prepare the
-# database before the server starts.
+#!/bin/bash
+set -euo pipefail
 mkdir -p /app/tmp/pids
-
-if [ "${1}" == "./bin/rails" ] && [ "${2}" == "server" ]; then
-  ./bin/rails db:prepare
-fi
-
-exec "${@}"
+# Migrations are run once by ops/deploy.sh before replacing application containers.
+rm -f /app/tmp/pids/server.pid
+exec "$@"
