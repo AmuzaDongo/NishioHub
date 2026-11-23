@@ -56,9 +56,19 @@ The API CI job is pinned to `ubuntu-24.04` to retain the prebuilt Ruby 3.3.6 req
 
 ## Fixing SSH host-key verification
 
-`SERVER_SSH_KEY` identifies the deployment account. `SERVER_KNOWN_HOSTS` identifies the **server**; they are different keys. The known-hosts secret must contain complete `hostname key-type base64-key` lines, not only a `SHA256:...` fingerprint or an account's `authorized_keys` entry. It must match the exact `SERVER_HOST` and SSH port. A DNS name and its IP address are separate known-hosts names.
+`SERVER_SSH_KEY` identifies the deployment account. `SERVER_KNOWN_HOSTS` identifies the **server**; they are different keys. The secret accepts either the raw server public key (recommended below), or complete `hostname key-type base64-key` lines. It does not accept a `SHA256:...` fingerprint or an account's deployment key. It must match the exact `SERVER_HOST` and SSH port. A DNS name and its IP address are separate known-hosts names.
 
-First, use your hosting provider's trusted server console to obtain the server fingerprint:
+The simplest setup is to run this **on the trusted server console**:
+
+```bash
+cat /etc/ssh/ssh_host_ed25519_key.pub
+```
+
+Copy the entire single line (`ssh-ed25519 AAAA... optional-comment`) into `SERVER_KNOWN_HOSTS`. The workflow now builds the correct hostname/port label from `SERVER_HOST` and `SERVER_PORT`. No network-scanned key is trusted automatically. This requires the updated workflow and `ops/prepare-known-hosts.sh` to be committed and pushed first. A rerun of an old workflow commit will still use the old validation.
+
+Update the `production` environment secret if one exists, since it takes precedence over a repository secret. The raw public-key format avoids DNS-name-versus-IP and custom-port formatting mistakes. Existing full known-hosts entries remain supported and keep their host restrictions.
+
+If you prefer the full known-hosts format, use your hosting provider's trusted server console to obtain the server fingerprint:
 
 ```bash
 sudo ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub -E sha256
