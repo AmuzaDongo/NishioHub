@@ -86,3 +86,31 @@ ssh-keygen -lf server-known-hosts -E sha256
 Compare the SHA256 fingerprint with the trusted console output. **Only if they match**, copy the full contents of `server-known-hosts` into the GitHub Actions secret `SERVER_KNOWN_HOSTS`. If you configured secrets in the `production` environment, update that environment's secret; it overrides a repository secret with the same name. For a nonstandard port, the host field must be `[YOUR_SERVER_HOST]:PORT`; `ssh-keyscan -p` formats it automatically.
 
 Commit/push the workflow validation change and rerun deployment. The workflow now rejects malformed or mismatched entries before SSH and explicitly uses the provided key and known-hosts file. It keeps `StrictHostKeyChecking=yes`. Never trust a freshly scanned key without checking its fingerprint, and never disable strict checking to bypass this failure. For a replaced/rebuilt server, verify its new fingerprint before changing the secret.
+
+## Fixing Permission denied (publickey)
+
+Host verification has passed at this point. Authentication uses `SERVER_SSH_KEY` (the deployment account's **private** key). `SERVER_KNOWN_HOSTS` is a different key: the server's public host key. Do not use `/etc/ssh/ssh_host_ed25519_key` as the deployment identity.
+
+On the computer holding your deployment private key, derive its matching public key:
+
+```bash
+ssh-keygen -y -f /path/to/deployment_private_key
+```
+
+On the trusted server console, set `deploy_user` to the exact GitHub `SERVER_USER` value, then prepare its SSH files:
+
+```bash
+deploy_user='YOUR_SERVER_USER'
+deploy_home=$(getent passwd "$deploy_user" | cut -d: -f6)
+test -n "$deploy_home" || exit 1
+deploy_group=$(id -gn "$deploy_user")
+sudo install -d -m 700 -o "$deploy_user" -g "$deploy_group" "$deploy_home/.ssh"
+sudo touch "$deploy_home/.ssh/authorized_keys"
+sudo chown "$deploy_user:$deploy_group" "$deploy_home/.ssh/authorized_keys"
+sudo chmod 600 "$deploy_home/.ssh/authorized_keys"
+sudo nano "$deploy_home/.ssh/authorized_keys"
+```
+
+Append the derived deployment public key as one complete line; keep existing keys. Do not paste the server host key or a fingerprint there. Ensure the account's home is owned appropriately and not writable by other users. The complete matching private key belongs in GitHub `SERVER_SSH_KEY`, including its BEGIN/END lines, with real newlines. The current noninteractive workflow requires a key without a passphrase; an encrypted key needs a separate agent/passphrase integration. Never share the private key in chat or logs.
+
+Test using the same user, host, port and private key from a trusted computer. If rejected, inspect the server's `journalctl -u ssh` (or `sshd` on some distributions). The logs distinguish wrong users, bad permissions and SSH access policies. If root login is disabled, use an authorized non-root deployment account; do not enable password authentication to bypass this error. Check the `production` environment's secrets, since they override repository secrets. The workflow now validates private-key format and tests account authentication before creating release directories.

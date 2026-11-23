@@ -86,12 +86,20 @@ jobs:
           : "${SSH_PRIVATE_KEY:?Missing SERVER_SSH_KEY}"
           : "${SERVER_KNOWN_HOSTS:?Missing SERVER_KNOWN_HOSTS}"
           install -m 700 -d ~/.ssh
-          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          printf '%s\n' "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           trap 'rm -f ~/.ssh/id_ed25519' EXIT
+          if ! ssh-keygen -y -P '' -f ~/.ssh/id_ed25519 >/dev/null 2>&1; then
+            echo '::error::SERVER_SSH_KEY must be a complete, valid private deployment key without a passphrase. A public key, server host key, or fingerprint will not work. Update the production environment secret.'
+            exit 1
+          fi
           printf '%s\n' "$SERVER_KNOWN_HOSTS" | bash ops/prepare-known-hosts.sh "$SERVER_HOST" "${SERVER_PORT:-22}" "$HOME/.ssh/known_hosts"
-          ssh_args=(-i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts" -p "${SERVER_PORT:-22}" -o StrictHostKeyChecking=yes -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=30)
+          ssh_args=(-i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -o PreferredAuthentications=publickey -o PasswordAuthentication=no -o UserKnownHostsFile="$HOME/.ssh/known_hosts" -p "${SERVER_PORT:-22}" -o StrictHostKeyChecking=yes -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=30)
           remote="$SERVER_USER@$SERVER_HOST"
+          if ! ssh "${ssh_args[@]}" "$remote" true; then
+            echo '::error::SSH login failed. Verify SERVER_USER and install the public key matching SERVER_SSH_KEY in that account authorized_keys. Check SSH-directory ownership/permissions and server sshd logs. See ops/README.md.'
+            exit 1
+          fi
           ssh "${ssh_args[@]}" "$remote" "mkdir -p '$DEPLOY_PATH/releases/$RELEASE_SHA'"
           git archive "$RELEASE_SHA" | ssh "${ssh_args[@]}" "$remote" "tar -x -C '$DEPLOY_PATH/releases/$RELEASE_SHA'"
           ssh "${ssh_args[@]}" "$remote" "bash '$DEPLOY_PATH/releases/$RELEASE_SHA/ops/deploy.sh' '$DEPLOY_PATH' '$RELEASE_SHA'"
