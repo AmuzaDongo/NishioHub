@@ -100,6 +100,9 @@ jobs:
             echo '::error::SSH login failed. Verify SERVER_USER and install the public key matching SERVER_SSH_KEY in that account authorized_keys. Check SSH-directory ownership/permissions and server sshd logs. See ops/README.md.'
             exit 1
           fi
-          ssh "${ssh_args[@]}" "$remote" "mkdir -p '$DEPLOY_PATH/releases/$RELEASE_SHA'"
+          if ! ssh "${ssh_args[@]}" "$remote" "test -w '$DEPLOY_PATH' && mkdir -p '$DEPLOY_PATH/releases/$RELEASE_SHA'"; then
+            echo '::error::The SSH account cannot write DEPLOY_PATH or its releases directory. An administrator must grant the deployment account ownership of those directories. Do not recursively change database or certificate ownership. See ops/README.md.'
+            exit 1
+          fi
           git archive "$RELEASE_SHA" | ssh "${ssh_args[@]}" "$remote" "tar -x -C '$DEPLOY_PATH/releases/$RELEASE_SHA'"
           ssh "${ssh_args[@]}" "$remote" "bash '$DEPLOY_PATH/releases/$RELEASE_SHA/ops/deploy.sh' '$DEPLOY_PATH' '$RELEASE_SHA'"

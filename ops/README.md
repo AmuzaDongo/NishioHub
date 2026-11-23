@@ -114,3 +114,24 @@ sudo nano "$deploy_home/.ssh/authorized_keys"
 Append the derived deployment public key as one complete line; keep existing keys. Do not paste the server host key or a fingerprint there. Ensure the account's home is owned appropriately and not writable by other users. The complete matching private key belongs in GitHub `SERVER_SSH_KEY`, including its BEGIN/END lines, with real newlines. The current noninteractive workflow requires a key without a passphrase; an encrypted key needs a separate agent/passphrase integration. Never share the private key in chat or logs.
 
 Test using the same user, host, port and private key from a trusted computer. If rejected, inspect the server's `journalctl -u ssh` (or `sshd` on some distributions). The logs distinguish wrong users, bad permissions and SSH access policies. If root login is disabled, use an authorized non-root deployment account; do not enable password authentication to bypass this error. Check the `production` environment's secrets, since they override repository secrets. The workflow now validates private-key format and tests account authentication before creating release directories.
+
+## Fixing release-directory permission denied
+
+SSH authentication is successful if `mkdir` reports permission denied. Run this once from a server console with sudo access. Replace `YOUR_SERVER_USER` with the exact GitHub `SERVER_USER` value:
+
+```bash
+deploy_user='YOUR_SERVER_USER'
+deploy_group=$(id -gn "$deploy_user") || exit 1
+base=/var/www/nishioHub
+sudo mkdir -p "$base/releases" "$base/backups"
+sudo chown "$deploy_user:$deploy_group" "$base" "$base/releases" "$base/backups"
+sudo chmod 750 "$base" "$base/releases" "$base/backups"
+# If the production environment file already exists:
+if sudo test -f "$base/.env"; then
+  sudo chown "$deploy_user:$deploy_group" "$base/.env"
+  sudo chmod 600 "$base/.env"
+fi
+sudo -u "$deploy_user" test -w "$base/releases" && echo 'Release directory is writable'
+```
+
+Use your configured base path if `DEPLOY_PATH` differs. These commands change only the deployment directories and environment file, not their contents recursively. Do not use `chmod -R 777` or recursively chown PostgreSQL volumes, certificate directories, or all of `/var/www`. Then rerun deployment. Docker access is a separate prerequisite: `sudo -u "$deploy_user" docker info` must succeed on the server.
